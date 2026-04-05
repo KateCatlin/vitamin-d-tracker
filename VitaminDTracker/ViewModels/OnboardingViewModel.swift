@@ -14,9 +14,10 @@ class OnboardingViewModel: ObservableObject {
     enum OnboardingStep: Int, CaseIterable {
         case welcome = 0
         case citySelection = 1
-        case testResult = 2
-        case supplement = 3
-        case disclaimer = 4
+        case skinType = 2
+        case testResult = 3
+        case supplement = 4
+        case disclaimer = 5
     }
 
     @Published var currentStep: OnboardingStep = .welcome
@@ -35,6 +36,10 @@ class OnboardingViewModel: ObservableObject {
             $0.cityName.localizedCaseInsensitiveContains(citySearchText)
         }
     }
+
+    // MARK: - Skin Type
+
+    @Published var selectedSkinType: FitzpatrickSkinType?
 
     // MARK: - Test Result
 
@@ -71,6 +76,7 @@ class OnboardingViewModel: ObservableObject {
         switch currentStep {
         case .welcome: return true
         case .citySelection: return selectedCity != nil
+        case .skinType: return selectedSkinType != nil
         case .testResult: return !hasTestResult || (!testValue.isEmpty && Double(testValue) != nil)
         case .supplement: return true
         case .disclaimer: return true
@@ -88,6 +94,7 @@ class OnboardingViewModel: ObservableObject {
         // Save user profile
         var profile = persistence.userProfile
         profile.homeLocation = city
+        profile.skinType = selectedSkinType
         profile.hasCompletedOnboarding = true
         profile.disclaimerAccepted = true
         profile.disclaimerAcceptedDate = Date()

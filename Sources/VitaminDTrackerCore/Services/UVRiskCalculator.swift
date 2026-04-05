@@ -68,20 +68,23 @@ public struct UVRiskCalculator {
     /// - Parameters:
     ///   - uvIndex: Current UV index.
     ///   - cloudCoverFraction: Cloud cover fraction.
-    ///   - sunburnThresholdSED: SED threshold for sunburn (default for fair skin).
+    ///   - skinType: User's Fitzpatrick skin type (nil uses conservative default).
+    ///   - sunburnThresholdSED: SED threshold override (ignored when skinType is provided).
     /// - Returns: Maximum recommended exposure in minutes. Returns nil if UV is negligible.
     public static func maxSafeExposureMinutes(
         uvIndex: Double,
         cloudCoverFraction: Double = 0.0,
-        sunburnThresholdSED: Double = ModelingAssumptions.defaultSunburnThresholdSED
+        skinType: FitzpatrickSkinType? = nil,
+        sunburnThresholdSED: Double? = nil
     ) -> Double? {
+        let threshold = sunburnThresholdSED ?? ModelingAssumptions.sunburnThreshold(for: skinType)
         let cloudFactor = 1.0 - 0.75 * min(max(cloudCoverFraction, 0.0), 1.0)
         let effectiveUVI = uvIndex * cloudFactor
 
         guard effectiveUVI > 0 else { return nil }
 
         let sedPerMinute = effectiveUVI * ModelingAssumptions.sedPerMinutePerUVI
-        return sunburnThresholdSED / sedPerMinute
+        return threshold / sedPerMinute
     }
 
     /// Check if the current exposure has exceeded the safe threshold.
@@ -90,20 +93,23 @@ public struct UVRiskCalculator {
     ///   - uvIndex: Current UV index.
     ///   - durationMinutes: Duration exposed.
     ///   - cloudCoverFraction: Cloud cover.
-    ///   - sunburnThresholdSED: SED threshold for warning.
+    ///   - skinType: User's Fitzpatrick skin type (nil uses conservative default).
+    ///   - sunburnThresholdSED: SED threshold override (ignored when skinType is provided).
     /// - Returns: true if the user should be warned about overexposure.
     public static func isOverexposed(
         uvIndex: Double,
         durationMinutes: Double,
         cloudCoverFraction: Double = 0.0,
-        sunburnThresholdSED: Double = ModelingAssumptions.defaultSunburnThresholdSED
+        skinType: FitzpatrickSkinType? = nil,
+        sunburnThresholdSED: Double? = nil
     ) -> Bool {
+        let threshold = sunburnThresholdSED ?? ModelingAssumptions.sunburnThreshold(for: skinType)
         let sed = accumulatedSED(
             uvIndex: uvIndex,
             durationMinutes: durationMinutes,
             cloudCoverFraction: cloudCoverFraction
         )
-        return sed >= sunburnThresholdSED
+        return sed >= threshold
     }
 
     /// Calculate the percentage of safe exposure used.
@@ -113,14 +119,16 @@ public struct UVRiskCalculator {
         uvIndex: Double,
         durationMinutes: Double,
         cloudCoverFraction: Double = 0.0,
-        sunburnThresholdSED: Double = ModelingAssumptions.defaultSunburnThresholdSED
+        skinType: FitzpatrickSkinType? = nil,
+        sunburnThresholdSED: Double? = nil
     ) -> Double {
+        let threshold = sunburnThresholdSED ?? ModelingAssumptions.sunburnThreshold(for: skinType)
         let sed = accumulatedSED(
             uvIndex: uvIndex,
             durationMinutes: durationMinutes,
             cloudCoverFraction: cloudCoverFraction
         )
-        guard sunburnThresholdSED > 0 else { return 0.0 }
-        return sed / sunburnThresholdSED
+        guard threshold > 0 else { return 0.0 }
+        return sed / threshold
     }
 }

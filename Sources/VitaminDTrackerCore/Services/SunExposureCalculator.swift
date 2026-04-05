@@ -7,6 +7,7 @@ import Foundation
 /// - Exposed skin fraction
 /// - Cloud cover
 /// - Duration (with diminishing returns after ~30 min at high UV)
+/// - Fitzpatrick skin type (melanin reduces UV-B absorption)
 ///
 /// See MODELING.md for scientific references and methodology.
 public struct SunExposureCalculator {
@@ -18,12 +19,14 @@ public struct SunExposureCalculator {
     ///   - skinExposureFraction: Fraction of body surface area exposed (0.0-1.0).
     ///   - cloudCoverFraction: Cloud cover fraction (0.0 = clear, 1.0 = overcast).
     ///   - durationMinutes: Duration of exposure in minutes.
+    ///   - skinType: User's Fitzpatrick skin type (nil uses fair-skin reference).
     /// - Returns: Estimated vitamin D production in ng/mL equivalent.
     public static func estimateVitaminDGain(
         uvIndex: Double,
         skinExposureFraction: Double,
         cloudCoverFraction: Double,
-        durationMinutes: Double
+        durationMinutes: Double,
+        skinType: FitzpatrickSkinType? = nil
     ) -> Double {
         guard uvIndex > 0, skinExposureFraction > 0, durationMinutes > 0 else {
             return 0.0
@@ -39,8 +42,11 @@ public struct SunExposureCalculator {
         // Base production rate in IU/minute
         let baseRate = ModelingAssumptions.baseIUPerMinuteAtUVI1
 
-        // Production rate scales with UV index and skin exposure
-        let productionRateIUPerMin = baseRate * effectiveUV * min(max(skinExposureFraction, 0.0), 1.0)
+        // Fitzpatrick skin type multiplier — darker skin produces less vitamin D
+        let skinTypeMultiplier = ModelingAssumptions.vitaminDProductionMultiplier(for: skinType)
+
+        // Production rate scales with UV index, skin exposure, and skin type
+        let productionRateIUPerMin = baseRate * effectiveUV * min(max(skinExposureFraction, 0.0), 1.0) * skinTypeMultiplier
 
         // Apply diminishing returns for long sessions
         // Production plateaus after ~30 min at high UV due to previtamin D3 photodegradation
@@ -90,25 +96,29 @@ public struct SunExposureCalculator {
     ///   - skinExposureFraction: Fraction of skin exposed.
     ///   - cloudCoverFraction: Cloud cover fraction.
     ///   - elapsedMinutes: Minutes already spent in the sun.
+    ///   - skinType: User's Fitzpatrick skin type (nil uses fair-skin reference).
     /// - Returns: Estimated gain rate in ng/mL per minute.
     public static func currentGainRate(
         uvIndex: Double,
         skinExposureFraction: Double,
         cloudCoverFraction: Double,
-        elapsedMinutes: Double
+        elapsedMinutes: Double,
+        skinType: FitzpatrickSkinType? = nil
     ) -> Double {
         // Get gain at current time and 1 minute later
         let gainNow = estimateVitaminDGain(
             uvIndex: uvIndex,
             skinExposureFraction: skinExposureFraction,
             cloudCoverFraction: cloudCoverFraction,
-            durationMinutes: elapsedMinutes
+            durationMinutes: elapsedMinutes,
+            skinType: skinType
         )
         let gainNext = estimateVitaminDGain(
             uvIndex: uvIndex,
             skinExposureFraction: skinExposureFraction,
             cloudCoverFraction: cloudCoverFraction,
-            durationMinutes: elapsedMinutes + 1.0
+            durationMinutes: elapsedMinutes + 1.0,
+            skinType: skinType
         )
         return gainNext - gainNow
     }

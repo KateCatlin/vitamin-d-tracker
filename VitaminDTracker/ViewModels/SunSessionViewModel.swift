@@ -36,6 +36,11 @@ class SunSessionViewModel: ObservableObject {
 
     var elapsedMinutes: Double { elapsedSeconds / 60.0 }
 
+    /// The user's Fitzpatrick skin type from their profile.
+    var userSkinType: FitzpatrickSkinType? {
+        persistence.userProfile.skinType
+    }
+
     var elapsedTimeFormatted: String {
         let hours = Int(elapsedSeconds) / 3600
         let minutes = (Int(elapsedSeconds) % 3600) / 60
@@ -57,7 +62,8 @@ class SunSessionViewModel: ObservableObject {
     var maxSafeMinutes: Double? {
         UVRiskCalculator.maxSafeExposureMinutes(
             uvIndex: estimatedUVIndex,
-            cloudCoverFraction: cloudCoverFraction
+            cloudCoverFraction: cloudCoverFraction,
+            skinType: userSkinType
         )
     }
 
@@ -173,14 +179,16 @@ class SunSessionViewModel: ObservableObject {
             uvIndex: estimatedUVIndex,
             skinExposureFraction: skinExposureFraction,
             cloudCoverFraction: cloudCoverFraction,
-            durationMinutes: elapsedMinutes
+            durationMinutes: elapsedMinutes,
+            skinType: userSkinType
         )
 
         // Update exposure percentage
         exposurePercentage = UVRiskCalculator.exposurePercentage(
             uvIndex: estimatedUVIndex,
             durationMinutes: elapsedMinutes,
-            cloudCoverFraction: cloudCoverFraction
+            cloudCoverFraction: cloudCoverFraction,
+            skinType: userSkinType
         )
 
         // Check overexposure
@@ -188,7 +196,8 @@ class SunSessionViewModel: ObservableObject {
         isOverexposed = UVRiskCalculator.isOverexposed(
             uvIndex: estimatedUVIndex,
             durationMinutes: elapsedMinutes,
-            cloudCoverFraction: cloudCoverFraction
+            cloudCoverFraction: cloudCoverFraction,
+            skinType: userSkinType
         )
 
         // Trigger alert on first overexposure detection

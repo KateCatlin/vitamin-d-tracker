@@ -26,6 +26,9 @@ struct OnboardingContainerView: View {
                     CitySelectionView(viewModel: viewModel)
                         .tag(OnboardingViewModel.OnboardingStep.citySelection)
 
+                    SkinTypeSelectionView(viewModel: viewModel)
+                        .tag(OnboardingViewModel.OnboardingStep.skinType)
+
                     TestResultInputView(viewModel: viewModel)
                         .tag(OnboardingViewModel.OnboardingStep.testResult)
 

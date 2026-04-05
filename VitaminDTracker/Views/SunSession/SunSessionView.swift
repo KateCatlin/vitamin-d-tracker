@@ -96,6 +96,19 @@ struct StartSessionContent: View {
                         .font(.system(size: 12, design: .rounded))
                         .foregroundColor(.textSecondary)
                 }
+
+                // Skin type info
+                if let skinType = viewModel.userSkinType {
+                    Divider()
+                    HStack {
+                        Text("Skin Type")
+                            .sectionHeading()
+                        Spacer()
+                        Text(skinType.displayName)
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundColor(.textSecondary)
+                    }
+                }
             }
             .softCard()
             .padding(.horizontal, 20)

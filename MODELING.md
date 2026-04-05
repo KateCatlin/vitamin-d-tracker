@@ -177,6 +177,7 @@ UV-B radiation (280-315 nm) converts 7-dehydrocholesterol in the skin to previta
 - Fraction of skin exposed
 - Cloud cover (which attenuates UV)
 - Duration of exposure (with diminishing returns)
+- **Fitzpatrick skin type** (melanin absorbs UV-B, reducing production in darker skin)
 
 ### 6.2 Base Production Rate
 
@@ -193,7 +194,32 @@ rate ≈ 5.7 IU/min/UVI/full-body
 - Holick MF. Vitamin D: importance in the prevention of cancers, type 1 diabetes, heart disease, and osteoporosis. *Am J Clin Nutr.* 2004;79(3):362-371.
 - Webb AR, Holick MF. The role of sunlight in the cutaneous production of vitamin D3. *Annu Rev Nutr.* 1988;8:375-399.
 
-### 6.3 Cloud Cover Effect
+### 6.3 Fitzpatrick Skin Type Adjustment
+
+Melanin in the skin absorbs UV-B radiation, reducing previtamin D3 synthesis. Individuals with darker skin require longer UV exposure to produce the same amount of vitamin D as individuals with lighter skin.
+
+The Fitzpatrick scale classifies skin into six phototypes (I–VI). We apply a production multiplier relative to Type II (fair skin) as the reference:
+
+| Fitzpatrick Type | Description | Vitamin D Multiplier | Sunburn Threshold (SED) |
+|-----------------|-------------|---------------------|------------------------|
+| Type I | Very fair, always burns | 1.20 | 2.0 |
+| Type II | Fair, burns easily (reference) | 1.00 | 2.5 |
+| Type III | Medium, tans gradually | 0.75 | 4.0 |
+| Type IV | Olive, tans well | 0.55 | 5.0 |
+| Type V | Brown, rarely burns | 0.35 | 8.0 |
+| Type VI | Dark, never burns | 0.20 | 10.0 |
+
+**Applied as:**
+```
+effective_production = base_production × skin_type_multiplier
+```
+
+**Sources:**
+- Fitzpatrick TB. The validity and practicality of sun-reactive skin types I through VI. *Arch Dermatol.* 1988;124(6):869-871.
+- Clemens TL, et al. Increased skin pigment reduces the capacity of skin to synthesise vitamin D3. *Lancet.* 1982;1(8263):74-76.
+- Holick MF. Vitamin D deficiency. *N Engl J Med.* 2007;357(3):266-281.
+
+### 6.4 Cloud Cover Effect
 
 Clouds reduce UV transmission approximately as:
 ```
@@ -205,7 +231,7 @@ effective_UV = UV_index × (1 - 0.75 × cloud_fraction)
 
 **Source:** WHO. Global Solar UV Index: A Practical Guide. 2002.
 
-### 6.4 Diminishing Returns
+### 6.5 Diminishing Returns
 
 Prolonged UV exposure does not produce vitamin D indefinitely. After ~30 minutes at high UV, previtamin D3 is photodegraded to inactive isomers (lumisterol, tachysterol).
 
@@ -221,7 +247,7 @@ At UV index 3: plateau around 100 minutes.
 
 **Source:** Holick MF. Vitamin D: importance in the prevention of cancers... *Am J Clin Nutr.* 2004.
 
-### 6.5 IU to ng/mL Conversion (Acute Dose)
+### 6.6 IU to ng/mL Conversion (Acute Dose)
 
 For a single sun exposure session:
 ```
@@ -247,7 +273,7 @@ One SED equals 100 J/m² of erythemally-weighted UV radiation. The minimal eryth
 | Type V (brown) | ~8 SED |
 | Type VI (dark) | ~10 SED |
 
-**Default threshold: 2.5 SED** (conservative, covering fair skin types).
+**Default threshold: 2.5 SED** (Fitzpatrick Type II). When the user's Fitzpatrick skin type is known, the app uses their type-specific threshold from the table above.
 
 ### 7.2 SED Accumulation Rate
 
@@ -325,7 +351,7 @@ This is a simplified model. In production, integrating a weather/UV API (e.g., O
 - UV index estimation without real weather data
 - No accounting for dietary vitamin D intake
 - No accounting for medications that affect vitamin D metabolism
-- Simplified skin-type model (using conservative fair-skin default for sunburn)
+- Fitzpatrick skin type multipliers are approximate population-level estimates
 - No accounting for sunscreen use
 - No accounting for altitude effects on UV
 
@@ -351,3 +377,5 @@ This is a simplified model. In production, integrating a weather/UV API (e.g., O
 10. Heaney RP, et al. Vitamin D3 is more potent than vitamin D2 in humans. *J Clin Endocrinol Metab.* 2011;96(3):E447-E452.
 11. Klingberg E, et al. Seasonal variations in serum 25-hydroxy vitamin D levels in a Swedish cohort. *Endocrine.* 2015;49(3):800-808.
 12. NIH Office of Dietary Supplements. Vitamin D Fact Sheet for Health Professionals. https://ods.od.nih.gov/factsheets/VitaminD-HealthProfessional/
+13. Fitzpatrick TB. The validity and practicality of sun-reactive skin types I through VI. *Arch Dermatol.* 1988;124(6):869-871.
+14. Clemens TL, et al. Increased skin pigment reduces the capacity of skin to synthesise vitamin D3. *Lancet.* 1982;1(8263):74-76.

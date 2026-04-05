@@ -27,6 +27,9 @@ class SettingsViewModel: ObservableObject {
     @Published var showCitySheet = false
     @Published var citySearchText = ""
 
+    // Skin type
+    @Published var showSkinTypeSheet = false
+
     // Model assumptions
     @Published var showModelAssumptions = false
 
@@ -50,6 +53,10 @@ class SettingsViewModel: ObservableObject {
         return "\(Int(plan.dailyDoseIU)) IU \(plan.vitaminDType.rawValue)/day"
     }
 
+    var skinTypeDisplayText: String {
+        userProfile.skinType?.displayName ?? "Not set"
+    }
+
     func loadData() {
         userProfile = persistence.userProfile
         currentSupplement = persistence.currentSupplementPlan
@@ -65,6 +72,14 @@ class SettingsViewModel: ObservableObject {
         persistence.userProfile = profile
         userProfile = profile
         showCitySheet = false
+    }
+
+    func updateSkinType(_ skinType: FitzpatrickSkinType) {
+        var profile = persistence.userProfile
+        profile.skinType = skinType
+        persistence.userProfile = profile
+        userProfile = profile
+        showSkinTypeSheet = false
     }
 
     func saveNewTestResult() {

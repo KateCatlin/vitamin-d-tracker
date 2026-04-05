@@ -67,8 +67,21 @@ public struct ModelingAssumptions: Codable, Sendable {
     /// Fair skin (Fitzpatrick type I-II): ~2-3 SED to minimal erythema
     /// Medium skin (type III-IV): ~4-5 SED
     /// Dark skin (type V-VI): ~8-10 SED
-    /// We default to a conservative 2.5 SED for safety warnings.
+    /// We default to a conservative 2.5 SED for safety warnings (Fitzpatrick type II).
+    /// When a Fitzpatrick type is known, use its specific threshold instead.
     public static let defaultSunburnThresholdSED: Double = 2.5
+
+    /// Returns the sunburn threshold for a given Fitzpatrick skin type,
+    /// or the conservative default if skin type is unknown.
+    public static func sunburnThreshold(for skinType: FitzpatrickSkinType?) -> Double {
+        skinType?.sunburnThresholdSED ?? defaultSunburnThresholdSED
+    }
+
+    /// Returns the vitamin D production multiplier for a given Fitzpatrick skin type,
+    /// or 1.0 (fair skin reference) if skin type is unknown.
+    public static func vitaminDProductionMultiplier(for skinType: FitzpatrickSkinType?) -> Double {
+        skinType?.vitaminDProductionMultiplier ?? 1.0
+    }
 
     /// One SED = 100 J/m² of erythemally weighted UV.
     /// At UV index N, erythemal irradiance ≈ N × 25 mW/m² = N × 0.025 W/m².
@@ -87,7 +100,9 @@ public struct ModelingAssumptions: Codable, Sendable {
         • Supplement effect: ~\(Int(steadyStateRisePerThousandIU)) ng/mL rise per 1000 IU/day D3 at steady state
         • D2 effectiveness: 50% of D3
         • Sun production: ~\(String(format: "%.1f", baseIUPerMinuteAtUVI1)) IU/min at UVI 1 (full body, clear sky)
-        • Sunburn warning threshold: \(defaultSunburnThresholdSED) SED (conservative, fair skin)
+        • Sunburn warning: skin-type-specific SED thresholds (Fitzpatrick I–VI)
+        • Default sunburn threshold: \(defaultSunburnThresholdSED) SED (type II / fair skin)
+        • Vitamin D production: adjusted by Fitzpatrick skin type (melanin absorption)
         • Default baseline (no lab data): \(Int(defaultBaselineNgML)) ng/mL, adjusted by latitude/season
 
         ⚠️ This model provides rough estimates only. It is NOT medical advice.

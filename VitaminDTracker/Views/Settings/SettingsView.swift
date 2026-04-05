@@ -21,6 +21,22 @@ struct SettingsView: View {
                     Text("Location")
                 }
 
+                // Skin type section
+                Section {
+                    HStack {
+                        Label("Skin Type", systemImage: "hand.raised.fill")
+                        Spacer()
+                        Text(viewModel.skinTypeDisplayText)
+                            .foregroundColor(.textSecondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { viewModel.showSkinTypeSheet = true }
+                } header: {
+                    Text("Fitzpatrick Skin Type")
+                } footer: {
+                    Text("Affects sunburn risk thresholds and estimated vitamin D production from sun exposure.")
+                }
+
                 // Lab test section
                 Section {
                     Button {
@@ -107,6 +123,9 @@ struct SettingsView: View {
             .sheet(isPresented: $viewModel.showCitySheet) {
                 CityPickerSheet(viewModel: viewModel)
             }
+            .sheet(isPresented: $viewModel.showSkinTypeSheet) {
+                SkinTypePickerSheet(viewModel: viewModel)
+            }
             .sheet(isPresented: $viewModel.showTestResultSheet) {
                 TestResultSheet(viewModel: viewModel)
             }
@@ -119,6 +138,67 @@ struct SettingsView: View {
             .sheet(isPresented: $viewModel.showDisclaimer) {
                 DisclaimerSheet()
             }
+        }
+    }
+}
+
+// MARK: - Skin Type Picker Sheet
+
+struct SkinTypePickerSheet: View {
+    @ObservedObject var viewModel: SettingsViewModel
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(FitzpatrickSkinType.allCases, id: \.rawValue) { skinType in
+                Button {
+                    viewModel.updateSkinType(skinType)
+                    dismiss()
+                } label: {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(skinTypeSettingsColor(skinType))
+                            .frame(width: 28, height: 28)
+                            .overlay(
+                                Circle().stroke(Color.subtleDivider, lineWidth: 1)
+                            )
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(skinType.displayName)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(.textPrimary)
+                            Text(skinType.sunResponse)
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        Spacer()
+
+                        if viewModel.userProfile.skinType == skinType {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.sunOrange)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Skin Type")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func skinTypeSettingsColor(_ skinType: FitzpatrickSkinType) -> Color {
+        switch skinType {
+        case .typeI:   return Color(red: 1.0, green: 0.90, blue: 0.82)
+        case .typeII:  return Color(red: 0.96, green: 0.84, blue: 0.72)
+        case .typeIII: return Color(red: 0.85, green: 0.72, blue: 0.58)
+        case .typeIV:  return Color(red: 0.72, green: 0.58, blue: 0.44)
+        case .typeV:   return Color(red: 0.55, green: 0.40, blue: 0.28)
+        case .typeVI:  return Color(red: 0.38, green: 0.26, blue: 0.18)
         }
     }
 }
