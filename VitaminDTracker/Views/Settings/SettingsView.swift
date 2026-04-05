@@ -157,7 +157,7 @@ struct SkinTypePickerSheet: View {
                 } label: {
                     HStack(spacing: 12) {
                         Circle()
-                            .fill(skinTypeSettingsColor(skinType))
+                            .fill(skinType.displayColor)
                             .frame(width: 28, height: 28)
                             .overlay(
                                 Circle().stroke(Color.subtleDivider, lineWidth: 1)
@@ -188,17 +188,6 @@ struct SkinTypePickerSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-        }
-    }
-
-    private func skinTypeSettingsColor(_ skinType: FitzpatrickSkinType) -> Color {
-        switch skinType {
-        case .typeI:   return Color(red: 1.0, green: 0.90, blue: 0.82)
-        case .typeII:  return Color(red: 0.96, green: 0.84, blue: 0.72)
-        case .typeIII: return Color(red: 0.85, green: 0.72, blue: 0.58)
-        case .typeIV:  return Color(red: 0.72, green: 0.58, blue: 0.44)
-        case .typeV:   return Color(red: 0.55, green: 0.40, blue: 0.28)
-        case .typeVI:  return Color(red: 0.38, green: 0.26, blue: 0.18)
         }
     }
 }

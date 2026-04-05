@@ -69,7 +69,7 @@ public struct UVRiskCalculator {
     ///   - uvIndex: Current UV index.
     ///   - cloudCoverFraction: Cloud cover fraction.
     ///   - skinType: User's Fitzpatrick skin type (nil uses conservative default).
-    ///   - sunburnThresholdSED: SED threshold override (ignored when skinType is provided).
+    ///   - sunburnThresholdSED: Explicit SED threshold override. When provided, takes precedence over skinType.
     /// - Returns: Maximum recommended exposure in minutes. Returns nil if UV is negligible.
     public static func maxSafeExposureMinutes(
         uvIndex: Double,
@@ -94,7 +94,7 @@ public struct UVRiskCalculator {
     ///   - durationMinutes: Duration exposed.
     ///   - cloudCoverFraction: Cloud cover.
     ///   - skinType: User's Fitzpatrick skin type (nil uses conservative default).
-    ///   - sunburnThresholdSED: SED threshold override (ignored when skinType is provided).
+    ///   - sunburnThresholdSED: Explicit SED threshold override. When provided, takes precedence over skinType.
     /// - Returns: true if the user should be warned about overexposure.
     public static func isOverexposed(
         uvIndex: Double,

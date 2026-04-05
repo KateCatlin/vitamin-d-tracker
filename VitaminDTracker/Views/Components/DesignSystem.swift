@@ -171,6 +171,22 @@ struct DisclaimerBanner: View {
     }
 }
 
+// MARK: - Fitzpatrick Skin Type Colors
+
+extension FitzpatrickSkinType {
+    /// UI color representing this skin type.
+    var displayColor: Color {
+        switch self {
+        case .typeI:   return Color(red: 1.0, green: 0.90, blue: 0.82)
+        case .typeII:  return Color(red: 0.96, green: 0.84, blue: 0.72)
+        case .typeIII: return Color(red: 0.85, green: 0.72, blue: 0.58)
+        case .typeIV:  return Color(red: 0.72, green: 0.58, blue: 0.44)
+        case .typeV:   return Color(red: 0.55, green: 0.40, blue: 0.28)
+        case .typeVI:  return Color(red: 0.38, green: 0.26, blue: 0.18)
+        }
+    }
+}
+
 // MARK: - Progress Ring
 
 struct ProgressRing: View {
