@@ -1,4 +1,5 @@
 import Foundation
+import VitaminDTrackerCore
 
 #if canImport(Combine)
 import Combine

@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Supplement input step in onboarding.
 struct SupplementInputView: View {

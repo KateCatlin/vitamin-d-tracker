@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// City selection step in onboarding.
 struct CitySelectionView: View {

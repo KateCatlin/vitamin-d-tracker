@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Fitzpatrick skin type selection step in onboarding.
 struct SkinTypeSelectionView: View {

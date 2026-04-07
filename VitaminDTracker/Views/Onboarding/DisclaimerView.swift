@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Disclaimer and explanation view — final onboarding step.
 struct DisclaimerView: View {

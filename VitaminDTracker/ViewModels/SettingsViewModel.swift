@@ -1,4 +1,5 @@
 import Foundation
+import VitaminDTrackerCore
 import SwiftUI
 
 #if canImport(Combine)

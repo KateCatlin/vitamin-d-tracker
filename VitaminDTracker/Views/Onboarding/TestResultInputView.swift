@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Test result input step in onboarding.
 struct TestResultInputView: View {

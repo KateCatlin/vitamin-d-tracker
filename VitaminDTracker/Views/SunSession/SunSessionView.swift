@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Sun exposure tracking session view.
 struct SunSessionView: View {

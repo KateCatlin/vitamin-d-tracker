@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Main dashboard screen showing the user's estimated vitamin D level.
 struct DashboardView: View {

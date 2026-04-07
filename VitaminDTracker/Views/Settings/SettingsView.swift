@@ -1,4 +1,5 @@
 import SwiftUI
+import VitaminDTrackerCore
 
 /// Settings and profile screen.
 struct SettingsView: View {
