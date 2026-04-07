@@ -96,12 +96,38 @@ swift test
 
 Or use `⌘U` in Xcode. The suite includes 101+ tests covering decay half-life correctness, D2/D3 differential behavior, forward-only supplement changes, multi-day catch-up idempotency, sun exposure diminishing returns, SED overexposure thresholds, unit conversions (ng/mL ↔ nmol/L), baseline latitude/seasonal effects, and Fitzpatrick skin type modeling.
 
+## Background Daily Updates
+
+### Intended Behavior
+The estimated vitamin D level updates at midnight each day, applying:
+- Daily metabolic decay
+- Daily supplement contribution
+
+### iOS Implementation
+iOS strictly limits background execution. The app uses:
+- `BGAppRefreshTask` for best-effort scheduled background processing
+- **Catch-up on app open**: When the app is launched, it computes all missed daily updates since the last known state
+
+### Correctness Guarantee
+Regardless of whether background tasks fire on time, the estimate is always correct when the app is opened. The catch-up mechanism replays all missing days from the last known anchor.
+
+## Analytics
+
+The app uses a lightweight local analytics approach:
+
+- **App Store Connect** is the primary source for download counts and install data
+- **In-app tracking** records local event counts for app opens, onboarding completions, sun session starts/completions, lab result entries, and supplement updates
+- **No personal health data is collected remotely**
+- **No third-party analytics SDKs** are included by default
+
+To add remote analytics (e.g., TelemetryDeck, PostHog, or similar privacy-conscious providers), extend `AnalyticsService.swift`.
+
 ## Known Limitations
 
 - **Scientific uncertainty** — The estimation model uses simplified first-order kinetics and population-average constants. Individual vitamin D metabolism varies significantly based on genetics, body composition, diet, and other factors not captured here.
 - **iOS background scheduling** — True midnight-exact background execution is not guaranteed by iOS. The app uses `BGAppRefreshTask` as the best available approximation and replays missed updates on next launch.
 - **Analytics gaps** — Exact download counts are only available via App Store Connect, not within the app itself. In-app analytics are lightweight and privacy-conscious.
-- **Not medical advice** — This app is for personal wellness estimation only. It should never be used as a substitute for professional medical care.
+- **Not medical advice** — This app is for personal wellness estimation only. It should never be used as a substitute for professional medical care, vitamin D testing, or supplementation guidance from a qualified healthcare provider.
 
 ## Contributing
 
