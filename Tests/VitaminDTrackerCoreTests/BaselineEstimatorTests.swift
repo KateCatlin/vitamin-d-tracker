@@ -109,7 +109,7 @@ final class BaselineEstimatorTests: XCTestCase {
         XCTAssertEqual(ModelingAssumptions.minimumUVIndexForVitaminD, 3.0)
     }
 
-    func testUVIndexBelowThresholdAtNight() {
+    func testUVIndexZeroAtNight() {
         let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
         let nightDate = makeDate(month: 6, day: 15, hour: 23, minute: 0)
         let uvi = BaselineEstimator.estimateUVIndex(location: nyc, date: nightDate)
@@ -125,7 +125,7 @@ final class BaselineEstimatorTests: XCTestCase {
             "UV index at noon in summer should meet the vitamin D production threshold")
     }
 
-    func testUVIndexLowLateAtNight() {
+    func testUVIndexZeroLateAtNight() {
         let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
         let lateNight = makeDate(month: 7, day: 1, hour: 22, minute: 30)
         let uvi = BaselineEstimator.estimateUVIndex(location: miami, date: lateNight)
@@ -140,6 +140,61 @@ final class BaselineEstimatorTests: XCTestCase {
         let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: earlyMorning)
         XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
             "UV index at 3 AM should be zero")
+    }
+
+    // MARK: - Daylight Duration
+
+    func testDaylightLongerInSummerThanWinter() {
+        // Seattle: ~16h daylight in June, ~8h in December
+        let summerHalf = BaselineEstimator.daylightHalfLength(latitude: 47.6, dayOfYear: 172)
+        let winterHalf = BaselineEstimator.daylightHalfLength(latitude: 47.6, dayOfYear: 355)
+        XCTAssertGreaterThan(summerHalf, winterHalf,
+            "Seattle should have longer daylight in summer than winter")
+        XCTAssertGreaterThan(summerHalf, 7.0, "Seattle summer half-day should be > 7h")
+        XCTAssertLessThan(winterHalf, 5.0, "Seattle winter half-day should be < 5h")
+    }
+
+    func testDaylightNearlyConstantAtEquator() {
+        let juneHalf = BaselineEstimator.daylightHalfLength(latitude: 0.0, dayOfYear: 172)
+        let decHalf = BaselineEstimator.daylightHalfLength(latitude: 0.0, dayOfYear: 355)
+        XCTAssertEqual(juneHalf, decHalf, accuracy: 0.1,
+            "Equator should have nearly constant daylight year-round")
+        XCTAssertEqual(juneHalf, 6.0, accuracy: 0.2,
+            "Equator half-day should be ~6 hours")
+    }
+
+    func testPolarDayInArcticSummer() {
+        // North of Arctic Circle (~66.5°) in June = midnight sun
+        let halfDay = BaselineEstimator.daylightHalfLength(latitude: 70.0, dayOfYear: 172)
+        XCTAssertEqual(halfDay, 12.0, accuracy: 0.001,
+            "Above Arctic Circle in summer should have 24h daylight")
+    }
+
+    func testPolarNightInArcticWinter() {
+        // North of Arctic Circle in December = polar night
+        let halfDay = BaselineEstimator.daylightHalfLength(latitude: 70.0, dayOfYear: 355)
+        XCTAssertEqual(halfDay, 0.0, accuracy: 0.001,
+            "Above Arctic Circle in winter should have 0h daylight")
+    }
+
+    func testUVNonZeroAt7PMInSeattleSummer() {
+        // Seattle in June: sunset is ~9 PM, so 7 PM should still have UV
+        let seattle = HomeLocation(cityName: "Seattle", country: "US",
+                                   latitude: 47.6, longitude: -122.3)
+        let eveningSummer = makeDate(month: 6, day: 21, hour: 19, minute: 0)
+        let uvi = BaselineEstimator.estimateUVIndex(location: seattle, date: eveningSummer)
+        XCTAssertGreaterThan(uvi, 0.0,
+            "Seattle at 7 PM in June should still have some UV")
+    }
+
+    func testUVZeroAt7PMInSeattleWinter() {
+        // Seattle in December: sunset is ~4:20 PM, so 7 PM should be zero
+        let seattle = HomeLocation(cityName: "Seattle", country: "US",
+                                   latitude: 47.6, longitude: -122.3)
+        let eveningWinter = makeDate(month: 12, day: 21, hour: 19, minute: 0)
+        let uvi = BaselineEstimator.estimateUVIndex(location: seattle, date: eveningWinter)
+        XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
+            "Seattle at 7 PM in December should have zero UV")
     }
 
     // MARK: - Helpers
