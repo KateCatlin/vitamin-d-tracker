@@ -17,6 +17,7 @@ targets:
       - VitaminDTracker
     dependencies:
       - package: VitaminDTrackerCore
+        product: VitaminDTrackerCore
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
