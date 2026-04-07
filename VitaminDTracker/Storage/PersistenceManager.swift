@@ -10,6 +10,15 @@ import Combine
 ///
 /// In a production app, this could be replaced with SwiftData or Core Data.
 /// For this initial version, JSON-file persistence is simple and sufficient.
+///
+/// SECURITY: Sensitive data (skin type via `userProfile`, blood test
+/// results) is stored in the **Keychain** with
+/// `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`. Everything else
+/// (sun-session timestamps, supplement plans, daily-event log) stays in
+/// `UserDefaults` — that data isn't health-identifying on its own.
+///
+/// A one-time migration moves any pre-existing `UserDefaults` values
+/// into the Keychain on first read (see ``migrateSensitiveKeyIfNeeded``).
 public final class PersistenceManager {
 
     // MARK: - Singleton
@@ -32,27 +41,43 @@ public final class PersistenceManager {
     // MARK: - Storage
 
     private let defaults: UserDefaults
+    private let keychain: KeychainStorage
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(
+        defaults: UserDefaults = .standard,
+        keychain: KeychainStorage = .shared
+    ) {
         self.defaults = defaults
+        self.keychain = keychain
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
     }
 
     // MARK: - User Profile
 
+    /// Stored in **Keychain** because `UserProfile.skinType` is a
+    /// Fitzpatrick phototype — a proxy for race/ethnicity and treated
+    /// as special-category data under GDPR Art. 9.
     public var userProfile: UserProfile {
-        get { load(key: Keys.userProfile) ?? UserProfile() }
-        set { save(newValue, key: Keys.userProfile) }
+        get {
+            migrateSensitiveKeyIfNeeded(Keys.userProfile)
+            return keychain.load(forKey: Keys.userProfile) ?? UserProfile()
+        }
+        set { keychain.save(newValue, forKey: Keys.userProfile) }
     }
 
     // MARK: - Test Results
 
+    /// Stored in **Keychain** — vitamin D blood test results are
+    /// clinical lab data.
     public var testResults: [VitaminDTestResult] {
-        get { load(key: Keys.testResults) ?? [] }
-        set { save(newValue, key: Keys.testResults) }
+        get {
+            migrateSensitiveKeyIfNeeded(Keys.testResults)
+            return keychain.load(forKey: Keys.testResults) ?? []
+        }
+        set { keychain.save(newValue, forKey: Keys.testResults) }
     }
 
     public func addTestResult(_ result: VitaminDTestResult) {
@@ -161,9 +186,38 @@ public final class PersistenceManager {
         for key in allKeys {
             defaults.removeObject(forKey: key)
         }
+        // Sensitive keys also live in Keychain — wipe both stores.
+        keychain.delete(key: Keys.userProfile)
+        keychain.delete(key: Keys.testResults)
     }
 
     // MARK: - Private Helpers
+
+    /// One-time migration: if a sensitive key still has data in
+    /// `UserDefaults` (from a build before Keychain was adopted) and
+    /// nothing exists in Keychain yet, copy it across, verify the
+    /// write, then delete the plaintext copy.
+    ///
+    /// Idempotent — once the Keychain has data for `key`, this is a
+    /// cheap no-op (`contains` is one `SecItemCopyMatching` call).
+    private func migrateSensitiveKeyIfNeeded(_ key: String) {
+        guard !keychain.contains(key: key),
+              let legacy = defaults.data(forKey: key)
+        else { return }
+
+        // The legacy bytes are already JSON produced by this file's
+        // own encoder (.iso8601 dates), so write them straight through.
+        // Going via `keychain.save(_:forKey:)` would JSON-encode the
+        // `Data` itself (base64-wrapping it) and break decoding.
+        keychain.saveRaw(legacy, forKey: key)
+
+        // Only delete the plaintext copy after we've confirmed the
+        // Keychain write took. If it didn't (e.g. device locked), we
+        // leave the legacy data in place and retry next launch.
+        if keychain.contains(key: key) {
+            defaults.removeObject(forKey: key)
+        }
+    }
 
     private func save<T: Codable>(_ value: T, key: String) {
         if let data = try? encoder.encode(value) {

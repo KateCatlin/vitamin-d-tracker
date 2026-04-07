@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Root content view that decides between onboarding and the main app.
 struct ContentView: View {
+    // We snapshot this once at init because `PersistenceManager` isn't
+    // observable. The Settings "Delete All Data" flow tells us to
+    // re-read it via `.userDataDidReset`.
     @State private var hasCompletedOnboarding = PersistenceManager.shared.userProfile.hasCompletedOnboarding
 
     var body: some View {
@@ -14,6 +17,16 @@ struct ContentView: View {
                         hasCompletedOnboarding = true
                     }
                 }
+            }
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .userDataDidReset)
+        ) { _ in
+            // resetAll() already wiped the profile; just re-read so the
+            // UI flips back to onboarding. Animate so it doesn't pop.
+            withAnimation(.easeInOut(duration: 0.5)) {
+                hasCompletedOnboarding =
+                    PersistenceManager.shared.userProfile.hasCompletedOnboarding
             }
         }
     }

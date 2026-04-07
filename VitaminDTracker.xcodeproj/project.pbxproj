@@ -16,6 +16,7 @@
 		4B6596C84ECDF4F95229DBF3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0653309134BA40C7414EA3 /* SettingsView.swift */; };
 		4F59A6D7373289DE4A2E9F00 /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63C5DEBD56205F50FEFDDC2 /* OnboardingViewModel.swift */; };
 		52411D95171D9E8C76D626B4 /* SunSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33C28C0836FA6F3F3AD28B36 /* SunSessionView.swift */; };
+		5A03A2D86257D5F888CD8371 /* KeychainStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA136B160B94FB1DDCEEB4E /* KeychainStorage.swift */; };
 		673ED9071BAC9671B3F184E7 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01EE6D3074D944073B5612D8 /* OnboardingContainerView.swift */; };
 		676120195C1FFBBB01BDFE30 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFCEC13B4BE4E19441E990 /* DashboardView.swift */; };
 		6838B878E99834F0BE970C4A /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1A5E204E9DCA992B284691 /* AnalyticsService.swift */; };
@@ -31,6 +32,7 @@
 
 /* Begin PBXFileReference section */
 		01EE6D3074D944073B5612D8 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
+		0EA136B160B94FB1DDCEEB4E /* KeychainStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStorage.swift; sourceTree = "<group>"; };
 		22F19B1C37FD55985A5904E2 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		2526CA408843E04493ABF2CF /* SkinTypeSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinTypeSelectionView.swift; sourceTree = "<group>"; };
 		33C28C0836FA6F3F3AD28B36 /* SunSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSessionView.swift; sourceTree = "<group>"; };
@@ -100,6 +102,7 @@
 		6238E617EBCF95F7DCBC0DF3 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
+				0EA136B160B94FB1DDCEEB4E /* KeychainStorage.swift */,
 				DEB89069022902CA79C4EB4A /* PersistenceManager.swift */,
 			);
 			path = Storage;
@@ -263,6 +266,7 @@
 				69AAC9F5A7DF78148EE243E2 /* DashboardViewModel.swift in Sources */,
 				A3507E0781838B25F14046BD /* DesignSystem.swift in Sources */,
 				DF4928EDDE471CC74FC7E12B /* DisclaimerView.swift in Sources */,
+				5A03A2D86257D5F888CD8371 /* KeychainStorage.swift in Sources */,
 				673ED9071BAC9671B3F184E7 /* OnboardingContainerView.swift in Sources */,
 				4F59A6D7373289DE4A2E9F00 /* OnboardingViewModel.swift in Sources */,
 				1349B12525CE4EAD5C9261CE /* PersistenceManager.swift in Sources */,
@@ -288,6 +292,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -298,7 +303,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vitamindtracker.VitaminDTracker;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katecatlin.VitaminDTracker;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -431,6 +436,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -441,7 +447,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vitamindtracker.VitaminDTracker;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katecatlin.VitaminDTracker;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";

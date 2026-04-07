@@ -1,0 +1,15 @@
+// Signing.xcconfig.template
+//
+// To sign builds locally without committing your Apple Developer Team ID
+// to this open-source repo:
+//
+//   1. Copy this file:
+//        cp Signing.xcconfig.template Signing.xcconfig
+//   2. Fill in your Team ID below.
+//   3. In Xcode: Project > Info > Configurations, set "Based on
+//      Configuration File" to Signing.xcconfig for Debug and Release.
+//
+// Signing.xcconfig is gitignored. NEVER commit it.
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID_HERE
+CODE_SIGN_STYLE = Automatic

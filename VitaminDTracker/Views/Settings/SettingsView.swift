@@ -114,10 +114,42 @@ struct SettingsView: View {
                     Text("Vitamin D Tracker provides estimates only. This is not medical advice. Consult a healthcare provider for vitamin D testing and supplementation guidance.")
                         .font(.system(size: 12))
                 }
+
+                // Privacy / data section.
+                // GDPR right-to-erasure: even though all data is local,
+                // users in the EU (and good practice everywhere) need a
+                // single-tap way to wipe everything the app holds.
+                Section {
+                    Button(role: .destructive) {
+                        viewModel.showDeleteConfirmation = true
+                    } label: {
+                        Label("Delete All Data", systemImage: "trash.fill")
+                    }
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text("All data stays on this device. Nothing is sent to a server. Deleting removes your profile, lab results, supplement history, and sun sessions, then returns to onboarding.")
+                        .font(.system(size: 12))
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .onAppear { viewModel.loadData() }
+            // Two-step destructive flow: button -> confirmationDialog.
+            // Using .confirmationDialog instead of .alert so the action
+            // sheet styling matches Apple's HIG for destructive ops.
+            .confirmationDialog(
+                "Delete All Data?",
+                isPresented: $viewModel.showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Everything", role: .destructive) {
+                    viewModel.deleteAllData()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently removes your profile, lab results, supplement history, and sun sessions from this device. This cannot be undone.")
+            }
 
             // MARK: - Sheets
 
