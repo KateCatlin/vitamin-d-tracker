@@ -27,9 +27,14 @@ class DashboardViewModel: ObservableObject {
         currentSupplement = persistence.currentSupplementPlan
         lastSunSession = persistence.mostRecentSunSession
 
-        // Calculate baseline
-        if let location = persistence.userProfile.homeLocation {
-            baselineLevel = BaselineEstimator.estimateBaseline(location: location)
+        // Use stored baseline (locked at onboarding), not recalculated from current city
+        if let stored = persistence.baselineLevel {
+            baselineLevel = stored
+        } else if let location = persistence.userProfile.homeLocation {
+            // Fallback for users who onboarded before baseline was stored
+            let computed = BaselineEstimator.estimateBaseline(location: location)
+            persistence.baselineLevel = computed
+            baselineLevel = computed
         }
 
         isLoading = false

@@ -34,7 +34,8 @@ class OnboardingViewModel: ObservableObject {
             return CityDatabase.cities
         }
         return CityDatabase.cities.filter {
-            $0.cityName.localizedCaseInsensitiveContains(citySearchText)
+            $0.cityName.localizedCaseInsensitiveContains(citySearchText) ||
+            $0.country.localizedCaseInsensitiveContains(citySearchText)
         }
     }
 
@@ -99,7 +100,12 @@ class OnboardingViewModel: ObservableObject {
         profile.hasCompletedOnboarding = true
         profile.disclaimerAccepted = true
         profile.disclaimerAcceptedDate = Date()
+        profile.addRecentLocation(city)
         persistence.userProfile = profile
+
+        // Lock in the baseline level at onboarding time
+        let baseline = BaselineEstimator.estimateBaseline(location: city)
+        persistence.baselineLevel = baseline
 
         // Save supplement plan
         let dose = Double(dailyDoseText) ?? 0

@@ -7,11 +7,11 @@ struct CitySelectionView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Where do you live?")
+            Text("What city are you in?")
                 .friendlyTitle()
                 .padding(.top, 24)
 
-            Text("Your home city helps estimate UV availability\nand baseline vitamin D levels.")
+            Text("Your city helps estimate UV availability\nfor sun exposure tracking.")
                 .bodyText()
                 .multilineTextAlignment(.center)
 
@@ -19,7 +19,7 @@ struct CitySelectionView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.textSecondary)
-                TextField("Search cities...", text: $viewModel.citySearchText)
+                TextField("Search cities or countries...", text: $viewModel.citySearchText)
                     .font(.system(size: 16, design: .rounded))
             }
             .padding(12)
@@ -58,9 +58,11 @@ struct CityRow: View {
                 Text(city.cityName)
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundColor(.textPrimary)
-                Text("Lat: \(String(format: "%.1f", city.latitude))°")
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundColor(.textSecondary)
+                if !city.country.isEmpty {
+                    Text(city.country)
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundColor(.textSecondary)
+                }
             }
             Spacer()
             if isSelected {

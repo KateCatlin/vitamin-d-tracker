@@ -72,6 +72,8 @@ public struct BaselineEstimator {
 
     /// Estimate UV index for a location and date/time.
     /// This is a rough model based on latitude, day of year, and time of day.
+    /// Daylight duration is computed from solar declination and latitude,
+    /// so sunrise/sunset times vary correctly by season and location.
     /// In a production app, this would be supplemented by weather API data.
     ///
     /// - Parameters:
@@ -91,12 +93,21 @@ public struct BaselineEstimator {
         // Solar noon approximation (simplified — doesn't account for timezone/longitude)
         let solarNoon = 12.0
 
-        // Time-of-day factor: peak at solar noon, zero at sunrise/sunset
-        // Using cosine with period matching ~10 hours of effective daylight
-        let hourAngle = Double.pi * (hourDecimal - solarNoon) / 7.0
-        let timeFactor = max(cos(hourAngle), 0.0)
+        // Calculate half-day length from solar declination and latitude
+        let halfDayHours = daylightHalfLength(latitude: location.latitude, dayOfYear: dayOfYear)
 
-        // Seasonal factor: peak in summer
+        // Time-of-day factor: peak at solar noon, zero at sunrise/sunset
+        // Use a cosine scaled so it equals 1 at noon and 0 at sunrise/sunset
+        let hoursFromNoon = abs(hourDecimal - solarNoon)
+        let timeFactor: Double
+        if halfDayHours <= 0 || hoursFromNoon >= halfDayHours {
+            timeFactor = 0.0
+        } else {
+            let hourAngle = (Double.pi / 2.0) * hoursFromNoon / halfDayHours
+            timeFactor = cos(hourAngle)
+        }
+
+        // Seasonal factor: peak in summer (models solar elevation / UV intensity)
         let peakDay: Double = location.latitude >= 0 ? 172.0 : 355.0
         let seasonPhase = 2.0 * Double.pi * (dayOfYear - peakDay) / 365.25
         let seasonFactor = (1.0 + cos(seasonPhase)) / 2.0
@@ -109,5 +120,27 @@ public struct BaselineEstimator {
         let peakUVI = 12.0
 
         return peakUVI * latFactor * seasonFactor * timeFactor
+    }
+
+    /// Computes the number of hours from solar noon to sunset (half the daylight period).
+    /// Uses the standard astronomical day-length formula based on solar declination and latitude.
+    ///
+    /// Returns 0 for polar night, 12 for polar day (midnight sun).
+    static func daylightHalfLength(latitude: Double, dayOfYear: Double) -> Double {
+        let latRad = latitude * Double.pi / 180.0
+
+        // Solar declination: axial tilt × sin of seasonal angle
+        let declination = 23.45 * Double.pi / 180.0
+            * sin(2.0 * Double.pi * (284.0 + dayOfYear) / 365.0)
+
+        let cosHourAngle = -tan(latRad) * tan(declination)
+
+        // Polar night: sun never rises
+        if cosHourAngle > 1.0 { return 0.0 }
+        // Polar day (midnight sun): sun never sets
+        if cosHourAngle < -1.0 { return 12.0 }
+
+        let hourAngleRad = acos(cosHourAngle)
+        return hourAngleRad * 12.0 / Double.pi  // convert radians to hours
     }
 }
