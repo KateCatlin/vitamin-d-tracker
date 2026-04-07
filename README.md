@@ -153,7 +153,7 @@ Contributions are welcome! Whether it's improving the estimation model, enhancin
 
 ## License
 
-This project does not currently have a license specified. Please contact the repository owner before using this code in your own projects.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
