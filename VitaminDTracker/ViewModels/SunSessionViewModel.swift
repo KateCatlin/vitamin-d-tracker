@@ -81,6 +81,19 @@ class SunSessionViewModel: ObservableObject {
         String(format: "+%.2f ng/mL", estimatedGain)
     }
 
+    /// Estimated gain converted to IU (the unit people know from supplements).
+    var estimatedGainIU: Double {
+        estimatedGain * ModelingAssumptions.iuPerNgMLAcuteDose
+    }
+
+    var gainIUFormatted: String {
+        let iu = estimatedGainIU
+        if iu >= 1000 {
+            return String(format: "+%.0f IU", iu)
+        }
+        return String(format: "+%.0f IU", iu)
+    }
+
     var uvRiskLevel: UVRiskLevel {
         UVRiskCalculator.riskLevel(uvIndex: estimatedUVIndex)
     }

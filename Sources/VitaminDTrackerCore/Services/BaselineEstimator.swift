@@ -107,19 +107,32 @@ public struct BaselineEstimator {
             timeFactor = cos(hourAngle)
         }
 
-        // Seasonal factor: peak in summer (models solar elevation / UV intensity)
-        let peakDay: Double = location.latitude >= 0 ? 172.0 : 355.0
-        let seasonPhase = 2.0 * Double.pi * (dayOfYear - peakDay) / 365.25
-        let seasonFactor = (1.0 + cos(seasonPhase)) / 2.0
+        // Noon UV intensity from solar elevation.
+        //
+        // Latitude and season are NOT independent — they couple through solar
+        // elevation: noonElevation = 90° − |latitude − declination|. Modeling
+        // them as separate multiplicative factors over-attenuates the tropics
+        // away from the summer solstice (e.g. it would put Cabo near UV 0 in
+        // December, when reality is UV ~6–7 at noon).
+        //
+        // The sin^2.5 exponent approximates atmospheric attenuation: at lower
+        // sun angles, UV-B passes through more atmosphere and ozone.
+        let declinationDeg = solarDeclinationDegrees(dayOfYear: dayOfYear)
+        let noonElevationDeg = 90.0 - abs(location.latitude - declinationDeg)
+        guard noonElevationDeg > 0 else { return 0.0 }   // polar night
+        let noonElevationRad = noonElevationDeg * Double.pi / 180.0
+        let elevationFactor = pow(sin(noonElevationRad), 2.5)
 
-        // Latitude factor: lower latitudes → higher UV
-        let absLat = abs(location.latitude)
-        let latFactor = max(1.0 - absLat / 90.0, 0.1)
-
-        // Peak UV index at the equator in summer at noon: ~12
+        // Peak UV index when the sun is directly overhead at noon: ~12
         let peakUVI = 12.0
 
-        return peakUVI * latFactor * seasonFactor * timeFactor
+        return peakUVI * elevationFactor * timeFactor
+    }
+
+    /// Solar declination angle in degrees for a given day of the year.
+    /// Ranges from ≈ −23.45° (Dec solstice) to ≈ +23.45° (Jun solstice).
+    static func solarDeclinationDegrees(dayOfYear: Double) -> Double {
+        23.45 * sin(2.0 * Double.pi * (284.0 + dayOfYear) / 365.0)
     }
 
     /// Computes the number of hours from solar noon to sunset (half the daylight period).
@@ -128,10 +141,7 @@ public struct BaselineEstimator {
     /// Returns 0 for polar night, 12 for polar day (midnight sun).
     static func daylightHalfLength(latitude: Double, dayOfYear: Double) -> Double {
         let latRad = latitude * Double.pi / 180.0
-
-        // Solar declination: axial tilt × sin of seasonal angle
-        let declination = 23.45 * Double.pi / 180.0
-            * sin(2.0 * Double.pi * (284.0 + dayOfYear) / 365.0)
+        let declination = solarDeclinationDegrees(dayOfYear: dayOfYear) * Double.pi / 180.0
 
         let cosHourAngle = -tan(latRad) * tan(declination)
 

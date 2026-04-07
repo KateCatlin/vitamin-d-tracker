@@ -229,10 +229,10 @@ struct ActiveSessionContent: View {
 
             // Vitamin D gain
             VStack(spacing: 4) {
-                Text(viewModel.gainFormatted)
+                Text(viewModel.gainIUFormatted)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.healthGreen)
-                Text("Estimated Vitamin D Gain")
+                Text("Estimated Vitamin D Produced")
                     .font(.system(size: 14, design: .rounded))
                     .foregroundColor(.textSecondary)
             }
@@ -327,7 +327,11 @@ struct SessionCompleteContent: View {
                 VStack(spacing: 16) {
                     SessionResultRow(label: "Duration", value: "\(Int(session.durationMinutes)) minutes")
                     SessionResultRow(
-                        label: "Vitamin D Gained",
+                        label: "Vitamin D Produced",
+                        value: String(format: "+%.0f IU", session.estimatedVitaminDGain * ModelingAssumptions.iuPerNgMLAcuteDose)
+                    )
+                    SessionResultRow(
+                        label: "Blood Level Change",
                         value: String(format: "+%.2f ng/mL", session.estimatedVitaminDGain)
                     )
                     SessionResultRow(
