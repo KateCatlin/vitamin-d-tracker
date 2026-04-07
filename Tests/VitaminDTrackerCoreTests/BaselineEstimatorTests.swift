@@ -142,6 +142,52 @@ final class BaselineEstimatorTests: XCTestCase {
             "UV index at 3 AM should be zero")
     }
 
+    // MARK: - Tropical UV (latitude/season coupling)
+
+    func testTropicalNoonUVIsHighInSpring() {
+        // Regression: Cabo (~23°N) at noon in early April should be UV ~10–11.
+        // The previous independent seasonFactor × latFactor model put it ~5.7
+        // because the seasonal swing was applied uniformly to every latitude.
+        let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
+                                latitude: 22.89, longitude: -109.92)
+        let noonApril = makeNoonDate(month: 4, day: 7)
+        let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: noonApril)
+        XCTAssertGreaterThan(uvi, 9.0,
+            "Cabo at noon in April should have very high UV (~10+), got \(uvi)")
+    }
+
+    func testTropicalNoonUVNonZeroAtWinterSolstice() {
+        // Regression: a season factor that swings 0→1 independent of latitude
+        // would force UV to ~0 at the winter solstice — wrong for the tropics.
+        let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
+                                latitude: 22.89, longitude: -109.92)
+        let noonDecSolstice = makeNoonDate(month: 12, day: 21)
+        let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: noonDecSolstice)
+        XCTAssertGreaterThanOrEqual(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
+            "Cabo at noon on the winter solstice should still produce vitamin D, got UV \(uvi)")
+    }
+
+    func testEquatorialNoonUVRoughlyConstantYearRound() {
+        // The equator's noon solar elevation only varies between ~66.5° and 90°,
+        // so UV should stay high in every month.
+        let equator = HomeLocation(cityName: "Equator", latitude: 0.0, longitude: 0.0)
+        for month in 1...12 {
+            let noon = makeNoonDate(month: month, day: 15)
+            let uvi = BaselineEstimator.estimateUVIndex(location: equator, date: noon)
+            XCTAssertGreaterThan(uvi, 8.0,
+                "Equator at noon should have UV > 8 year-round; month \(month) gave \(uvi)")
+        }
+    }
+
+    func testHighLatitudeStillHasLargeSeasonalSwing() {
+        // Make sure coupling didn't kill seasonal variation where it belongs.
+        let seattle = HomeLocation(cityName: "Seattle", latitude: 47.6, longitude: -122.3)
+        let summerUV = BaselineEstimator.estimateUVIndex(location: seattle, date: makeNoonDate(month: 6, day: 21))
+        let winterUV = BaselineEstimator.estimateUVIndex(location: seattle, date: makeNoonDate(month: 12, day: 21))
+        XCTAssertGreaterThan(summerUV, winterUV * 5.0,
+            "Seattle's noon UV should swing dramatically between summer (\(summerUV)) and winter (\(winterUV))")
+    }
+
     // MARK: - Daylight Duration
 
     func testDaylightLongerInSummerThanWinter() {
