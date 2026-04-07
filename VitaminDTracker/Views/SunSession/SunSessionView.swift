@@ -318,3 +318,7 @@ struct SessionResultRow: View {
         }
     }
 }
+
+#Preview {
+    SunSessionView()
+}

@@ -76,3 +76,7 @@ struct TestResultInputView: View {
         }
     }
 }
+
+#Preview {
+    TestResultInputView(viewModel: OnboardingViewModel())
+}

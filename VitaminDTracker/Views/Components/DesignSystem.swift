@@ -214,3 +214,20 @@ struct ProgressRing: View {
         }
     }
 }
+
+#Preview("Design System") {
+    ScrollView {
+        VStack(spacing: 20) {
+            Text("Friendly Title")
+                .friendlyTitle()
+            Text("Section Heading")
+                .sectionHeading()
+            Text("Body text style")
+                .bodyText()
+            SourceBadge(text: "Supplement", color: .blue)
+            DisclaimerBanner()
+            ProgressRing(progress: 0.65, lineWidth: 8, size: 80)
+        }
+        .padding()
+    }
+}

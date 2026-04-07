@@ -76,3 +76,7 @@ struct SkinTypeRow: View {
         skinType.displayColor
     }
 }
+
+#Preview {
+    SkinTypeSelectionView(viewModel: OnboardingViewModel())
+}

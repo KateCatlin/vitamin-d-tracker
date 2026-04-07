@@ -403,3 +403,7 @@ struct DisclaimerSheet: View {
         }
     }
 }
+
+#Preview {
+    SettingsView()
+}

@@ -90,3 +90,7 @@ struct ProgressBar: View {
         }
     }
 }
+
+#Preview {
+    OnboardingContainerView(onComplete: {})
+}

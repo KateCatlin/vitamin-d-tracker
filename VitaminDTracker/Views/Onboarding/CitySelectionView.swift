@@ -72,3 +72,7 @@ struct CityRow: View {
         .cornerRadius(10)
     }
 }
+
+#Preview {
+    CitySelectionView(viewModel: OnboardingViewModel())
+}

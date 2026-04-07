@@ -105,3 +105,7 @@ struct DisclaimerItem: View {
         }
     }
 }
+
+#Preview {
+    DisclaimerView()
+}

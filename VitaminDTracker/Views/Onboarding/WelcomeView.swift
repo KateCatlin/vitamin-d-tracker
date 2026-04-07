@@ -57,3 +57,7 @@ struct FeatureRow: View {
         }
     }
 }
+
+#Preview {
+    WelcomeView()
+}

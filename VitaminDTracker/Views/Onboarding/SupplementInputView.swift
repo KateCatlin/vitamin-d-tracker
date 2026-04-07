@@ -81,3 +81,7 @@ struct SupplementInputView: View {
         }
     }
 }
+
+#Preview {
+    SupplementInputView(viewModel: OnboardingViewModel())
+}

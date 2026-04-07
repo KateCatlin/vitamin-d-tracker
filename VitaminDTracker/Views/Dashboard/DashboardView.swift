@@ -151,3 +151,7 @@ struct RecentSessionCard: View {
         .softCard()
     }
 }
+
+#Preview {
+    DashboardView()
+}

@@ -41,3 +41,7 @@ struct MainTabView: View {
         .tint(.sunOrange)
     }
 }
+
+#Preview {
+    ContentView()
+}
