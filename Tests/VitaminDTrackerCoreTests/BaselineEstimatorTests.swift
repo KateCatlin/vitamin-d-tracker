@@ -103,7 +103,47 @@ final class BaselineEstimatorTests: XCTestCase {
         XCTAssertEqual(northEffect, southEffect, accuracy: 0.001)
     }
 
+    // MARK: - UV Index Minimum Threshold
+
+    func testMinimumUVIndexForVitaminDIsThree() {
+        XCTAssertEqual(ModelingAssumptions.minimumUVIndexForVitaminD, 3.0)
+    }
+
+    func testUVIndexBelowThresholdAtNight() {
+        let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
+        let nightDate = makeDate(month: 6, day: 15, hour: 23, minute: 0)
+        let uvi = BaselineEstimator.estimateUVIndex(location: nyc, date: nightDate)
+        XCTAssertLessThan(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
+            "UV index at 11 PM should be below the vitamin D production threshold")
+    }
+
+    func testUVIndexAboveThresholdAtMiddaySummer() {
+        let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
+        let noonSummer = makeNoonDate(month: 6, day: 15)
+        let uvi = BaselineEstimator.estimateUVIndex(location: nyc, date: noonSummer)
+        XCTAssertGreaterThanOrEqual(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
+            "UV index at noon in summer should meet the vitamin D production threshold")
+    }
+
+    func testUVIndexLowLateAtNight() {
+        let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
+        let lateNight = makeDate(month: 7, day: 1, hour: 22, minute: 30)
+        let uvi = BaselineEstimator.estimateUVIndex(location: miami, date: lateNight)
+        XCTAssertLessThan(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
+            "UV index at 10:30 PM should be below the vitamin D production threshold")
+    }
+
     // MARK: - Helpers
+
+    private func makeDate(month: Int, day: Int, hour: Int, minute: Int) -> Date {
+        var components = DateComponents()
+        components.year = 2025
+        components.month = month
+        components.day = day
+        components.hour = hour
+        components.minute = minute
+        return Calendar(identifier: .gregorian).date(from: components)!
+    }
 
     private func makeDateForJune15() -> Date {
         var components = DateComponents()

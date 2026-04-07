@@ -13,8 +13,10 @@ struct SunSessionView: View {
                         ActiveSessionContent(viewModel: viewModel)
                     } else if let session = viewModel.currentSession, session.isCompleted {
                         SessionCompleteContent(viewModel: viewModel)
-                    } else {
+                    } else if viewModel.isUVSufficientForSession {
                         StartSessionContent(viewModel: viewModel)
+                    } else {
+                        LowUVContent(viewModel: viewModel)
                     }
                 }
                 .padding(.vertical, 16)
@@ -22,6 +24,9 @@ struct SunSessionView: View {
             .background(Color.white)
             .navigationTitle("Sun Session")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                viewModel.refreshUVEstimate()
+            }
             .alert("☀️ Sun Exposure Warning", isPresented: $viewModel.showOverexposureAlert) {
                 Button("Stop Session") {
                     viewModel.stopSession()
@@ -30,6 +35,77 @@ struct SunSessionView: View {
             } message: {
                 Text("You've reached the recommended maximum sun exposure time. Consider stopping to protect your skin.")
             }
+        }
+    }
+}
+
+// MARK: - Low UV Content
+
+struct LowUVContent: View {
+    @ObservedObject var viewModel: SunSessionViewModel
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Moon illustration
+            Image(systemName: "moon.stars.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.skyBlue, Color.skyBlue.opacity(0.6)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .padding(.top, 20)
+
+            Text("Low UV Right Now")
+                .friendlyTitle()
+
+            Text("The UV index is currently too low\nfor your skin to produce vitamin D.")
+                .bodyText()
+                .multilineTextAlignment(.center)
+
+            // Current UV info card
+            VStack(spacing: 12) {
+                HStack {
+                    Text("Current UV Index")
+                        .sectionHeading()
+                    Spacer()
+                    Text(viewModel.currentUVIndexFormatted)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.skyBlue)
+                }
+
+                Divider()
+
+                HStack {
+                    Text("Minimum for Vitamin D")
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundColor(.textSecondary)
+                    Spacer()
+                    Text("3.0")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+            .softCard()
+            .padding(.horizontal, 20)
+
+            // Suggestion card
+            HStack(spacing: 10) {
+                Image(systemName: "sun.max.fill")
+                    .foregroundColor(.sunYellow)
+                    .font(.system(size: 16))
+                Text("Try again when the sun is higher —\ntypically between 10 AM and 2 PM.")
+                    .font(.system(size: 14, design: .rounded))
+                    .foregroundColor(.textSecondary)
+            }
+            .padding(14)
+            .background(Color.sunYellowLight.opacity(0.4))
+            .cornerRadius(12)
+            .padding(.horizontal, 20)
+
+            Spacer(minLength: 20)
         }
     }
 }

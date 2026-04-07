@@ -36,6 +36,12 @@ public struct ModelingAssumptions: Codable, Sendable {
 
     // MARK: - Sun Exposure
 
+    /// Minimum UV index required for meaningful vitamin D synthesis.
+    /// At UVI below 3, UVB radiation is insufficient for the skin to
+    /// produce vitamin D. Widely supported by dermatological research.
+    /// Sources: Examine.com, GrassrootsHealth, CircadianSync
+    public static let minimumUVIndexForVitaminD: Double = 3.0
+
     /// Base vitamin D production rate in IU per minute of full-body exposure
     /// at UV index 1, with clear sky.
     /// At UV index ~7 with ~25% skin exposed, fair-skinned individuals produce

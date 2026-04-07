@@ -28,6 +28,31 @@ class SunSessionViewModel: ObservableObject {
     @Published var cloudCoverFraction: Double = 0.0
     @Published var sessionLocation: HomeLocation?
 
+    // MARK: - UV Availability
+
+    /// The current estimated UV index for the user's location, updated on view appear.
+    @Published var currentLocationUVIndex: Double = 0.0
+
+    /// Whether the current UV index is high enough for meaningful vitamin D production.
+    var isUVSufficientForSession: Bool {
+        currentLocationUVIndex >= ModelingAssumptions.minimumUVIndexForVitaminD
+    }
+
+    /// Formatted string for the current UV index.
+    var currentUVIndexFormatted: String {
+        String(format: "%.1f", currentLocationUVIndex)
+    }
+
+    /// Refreshes the estimated UV index for the user's current location.
+    func refreshUVEstimate() {
+        let location = sessionLocation ?? persistence.userProfile.homeLocation ?? HomeLocation(
+            cityName: "Unknown",
+            latitude: 37.7749,
+            longitude: -122.4194
+        )
+        currentLocationUVIndex = BaselineEstimator.estimateUVIndex(location: location)
+    }
+
     // MARK: - Timer
 
     private var timer: Timer?
