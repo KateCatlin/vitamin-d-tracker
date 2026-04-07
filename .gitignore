@@ -14,6 +14,10 @@ DerivedData/
 *.dSYM
 xcuserdata/
 
+# Local code signing — NEVER commit your Apple Developer Team ID.
+# Copy Signing.xcconfig.template -> Signing.xcconfig and fill in locally.
+Signing.xcconfig
+
 # Swift Package Manager
 .build/
 Packages/

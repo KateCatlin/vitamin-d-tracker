@@ -37,6 +37,9 @@ class SettingsViewModel: ObservableObject {
     // Disclaimer
     @Published var showDisclaimer = false
 
+    // Data deletion
+    @Published var showDeleteConfirmation = false
+
     private let persistence = PersistenceManager.shared
 
     var filteredCities: [HomeLocation] {
@@ -129,4 +132,22 @@ class SettingsViewModel: ObservableObject {
         AnalyticsService.shared.log(.supplementUpdated)
         showSupplementSheet = false
     }
+
+    /// Wipe everything (UserDefaults + Keychain) and bounce back to
+    /// onboarding. Posted notification lets `ContentView` re-read the
+    /// `hasCompletedOnboarding` flag without needing a shared store.
+    func deleteAllData() {
+        persistence.resetAll()
+        // Reset local published state so the Settings UI doesn't show
+        // stale values during the dismiss animation.
+        userProfile = UserProfile()
+        currentSupplement = nil
+        NotificationCenter.default.post(name: .userDataDidReset, object: nil)
+    }
+}
+
+extension Notification.Name {
+    /// Posted after ``PersistenceManager/resetAll()`` completes.
+    /// `ContentView` listens for this to flip back to onboarding.
+    static let userDataDidReset = Notification.Name("VitaminDTracker.userDataDidReset")
 }
