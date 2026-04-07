@@ -44,8 +44,13 @@ class SettingsViewModel: ObservableObject {
             return CityDatabase.cities
         }
         return CityDatabase.cities.filter {
-            $0.cityName.localizedCaseInsensitiveContains(citySearchText)
+            $0.cityName.localizedCaseInsensitiveContains(citySearchText) ||
+            $0.country.localizedCaseInsensitiveContains(citySearchText)
         }
+    }
+
+    var recentCities: [HomeLocation] {
+        persistence.userProfile.recentLocations
     }
 
     var supplementDisplayText: String {
@@ -70,6 +75,7 @@ class SettingsViewModel: ObservableObject {
     func updateCity(_ city: HomeLocation) {
         var profile = persistence.userProfile
         profile.homeLocation = city
+        profile.addRecentLocation(city)
         persistence.userProfile = profile
         userProfile = profile
         showCitySheet = false

@@ -11,9 +11,9 @@ struct SettingsView: View {
                 // Location section
                 Section {
                     HStack {
-                        Label("Home City", systemImage: "location.fill")
+                        Label("My City", systemImage: "location.fill")
                         Spacer()
-                        Text(viewModel.userProfile.homeLocation?.cityName ?? "Not set")
+                        Text(viewModel.userProfile.homeLocation?.displayName ?? "Not set")
                             .foregroundColor(.textSecondary)
                     }
                     .contentShape(Rectangle())
@@ -205,24 +205,42 @@ struct CityPickerSheet: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.textSecondary)
-                    TextField("Search cities...", text: $viewModel.citySearchText)
+                    TextField("Search cities or countries...", text: $viewModel.citySearchText)
                 }
                 .padding(12)
                 .background(Color.skyBlueLight)
                 .cornerRadius(12)
                 .padding(.horizontal, 16)
 
-                List(viewModel.filteredCities, id: \.cityName) { city in
-                    Button {
-                        viewModel.updateCity(city)
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Text(city.cityName)
-                            Spacer()
-                            if viewModel.userProfile.homeLocation?.cityName == city.cityName {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.sunOrange)
+                List {
+                    // Recent cities section
+                    if !viewModel.recentCities.isEmpty && viewModel.citySearchText.isEmpty {
+                        Section("Recent") {
+                            ForEach(viewModel.recentCities, id: \.cityName) { city in
+                                Button {
+                                    viewModel.updateCity(city)
+                                    dismiss()
+                                } label: {
+                                    CityPickerRow(
+                                        city: city,
+                                        isSelected: viewModel.userProfile.homeLocation?.cityName == city.cityName
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // All cities section
+                    Section(viewModel.citySearchText.isEmpty ? "All Cities" : "Results") {
+                        ForEach(viewModel.filteredCities, id: \.cityName) { city in
+                            Button {
+                                viewModel.updateCity(city)
+                                dismiss()
+                            } label: {
+                                CityPickerRow(
+                                    city: city,
+                                    isSelected: viewModel.userProfile.homeLocation?.cityName == city.cityName
+                                )
                             }
                         }
                     }
@@ -234,6 +252,31 @@ struct CityPickerSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+        }
+    }
+}
+
+struct CityPickerRow: View {
+    let city: HomeLocation
+    let isSelected: Bool
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(city.cityName)
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundColor(.textPrimary)
+                if !city.country.isEmpty {
+                    Text(city.country)
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundColor(.sunOrange)
             }
         }
     }

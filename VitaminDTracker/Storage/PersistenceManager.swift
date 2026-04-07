@@ -26,6 +26,7 @@ public final class PersistenceManager {
         static let currentEstimate = "currentEstimate"
         static let dailyEvents = "dailyEvents"
         static let lastDailyUpdateDate = "lastDailyUpdateDate"
+        static let baselineLevel = "baselineLevel"
     }
 
     // MARK: - Storage
@@ -141,13 +142,21 @@ public final class PersistenceManager {
         set { defaults.set(newValue, forKey: Keys.lastDailyUpdateDate) }
     }
 
+    // MARK: - Baseline Level
+
+    /// Stored baseline vitamin D level from onboarding. Not recalculated when city changes.
+    public var baselineLevel: Double? {
+        get { defaults.object(forKey: Keys.baselineLevel) as? Double }
+        set { defaults.set(newValue, forKey: Keys.baselineLevel) }
+    }
+
     // MARK: - Reset
 
     public func resetAll() {
         let allKeys = [
             Keys.userProfile, Keys.testResults, Keys.supplementPlans,
             Keys.sunSessions, Keys.currentEstimate, Keys.dailyEvents,
-            Keys.lastDailyUpdateDate
+            Keys.lastDailyUpdateDate, Keys.baselineLevel
         ]
         for key in allKeys {
             defaults.removeObject(forKey: key)
