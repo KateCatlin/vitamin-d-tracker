@@ -92,9 +92,15 @@ public struct BaselineEstimator {
         let solarNoon = 12.0
 
         // Time-of-day factor: peak at solar noon, zero at sunrise/sunset
-        // Using cosine with period matching ~10 hours of effective daylight
-        let hourAngle = Double.pi * (hourDecimal - solarNoon) / 7.0
-        let timeFactor = max(cos(hourAngle), 0.0)
+        // UV is effectively zero when the sun is more than ~7 hours from solar noon
+        let hoursFromNoon = abs(hourDecimal - solarNoon)
+        let timeFactor: Double
+        if hoursFromNoon >= 7.0 {
+            timeFactor = 0.0
+        } else {
+            let hourAngle = Double.pi * hoursFromNoon / 7.0
+            timeFactor = cos(hourAngle)
+        }
 
         // Seasonal factor: peak in summer
         let peakDay: Double = location.latitude >= 0 ? 172.0 : 355.0

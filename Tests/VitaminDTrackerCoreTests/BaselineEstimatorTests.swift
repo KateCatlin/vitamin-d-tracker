@@ -113,8 +113,8 @@ final class BaselineEstimatorTests: XCTestCase {
         let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
         let nightDate = makeDate(month: 6, day: 15, hour: 23, minute: 0)
         let uvi = BaselineEstimator.estimateUVIndex(location: nyc, date: nightDate)
-        XCTAssertLessThan(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
-            "UV index at 11 PM should be below the vitamin D production threshold")
+        XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
+            "UV index at 11 PM should be zero")
     }
 
     func testUVIndexAboveThresholdAtMiddaySummer() {
@@ -129,8 +129,17 @@ final class BaselineEstimatorTests: XCTestCase {
         let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
         let lateNight = makeDate(month: 7, day: 1, hour: 22, minute: 30)
         let uvi = BaselineEstimator.estimateUVIndex(location: miami, date: lateNight)
-        XCTAssertLessThan(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
-            "UV index at 10:30 PM should be below the vitamin D production threshold")
+        XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
+            "UV index at 10:30 PM should be zero")
+    }
+
+    func testUVIndexZeroAtEarlyMorning() {
+        let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
+                                latitude: 22.89, longitude: -109.92)
+        let earlyMorning = makeDate(month: 4, day: 7, hour: 3, minute: 0)
+        let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: earlyMorning)
+        XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
+            "UV index at 3 AM should be zero")
     }
 
     // MARK: - Helpers
