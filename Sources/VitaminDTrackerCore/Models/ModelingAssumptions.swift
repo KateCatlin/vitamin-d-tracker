@@ -67,6 +67,41 @@ public struct ModelingAssumptions: Codable, Sendable {
     /// This is adjusted by latitude and season in the BaselineEstimator.
     public static let defaultBaselineNgML: Double = 25.0
 
+    /// Approximate steady-state contribution of diet alone, in ng/mL.
+    ///
+    /// NHANES 2015-16 puts mean US dietary intake (food + beverages, no
+    /// supplements) at ~190 IU/day. Plugging that through the same
+    /// dose-response we use for supplements (`steadyStateRisePerThousandIU`)
+    /// gives ~1.9 ng/mL. We round to 2.
+    ///
+    /// This is used by `BaselineEstimator` to separate the diet-derived floor
+    /// (which melanin does not affect) from the incidental-sun portion (which
+    /// it does) when applying the Fitzpatrick skin-type adjustment.
+    public static let dietaryBaselineFloorNgML: Double = 2.0
+
+    // MARK: - Background Input (diet + incidental sun)
+
+    /// Daily background gain in ng/mL from diet and incidental sun exposure.
+    ///
+    /// **Why this exists:** the supplement dose-response we use (Heaney 2003)
+    /// is a *marginal* effect — measured as the rise *above* a subject's
+    /// existing baseline while they continued to live normally. Without this
+    /// term the model treats the supplement as the *only* input and converges
+    /// toward `dose / 100` ng/mL, which is unrealistically pessimistic:
+    /// NHANES 2001-04 puts the unsupplemented US mean at ~24 ng/mL, not 0.
+    ///
+    /// **How it's derived:** the value is whatever daily input is needed to
+    /// hold a person at `baselineNgML` against decay. By construction,
+    /// `baselineNgML × dailyDecayRate` exactly cancels decay at that level,
+    /// so with no supplement and no tracked sun the model sits at the
+    /// baseline rather than drifting to zero.
+    ///
+    /// `baselineNgML` should come from `BaselineEstimator.estimateBaseline`,
+    /// re-evaluated per day so it tracks season, latitude, and skin type.
+    public static func dailyBackgroundRise(forBaselineNgML baselineNgML: Double) -> Double {
+        return baselineNgML * dailyDecayRate
+    }
+
     // MARK: - UV Risk
 
     /// Standard Erythemal Dose (SED) values for sunburn threshold.
@@ -103,13 +138,14 @@ public struct ModelingAssumptions: Codable, Sendable {
         ===================================
         • Half-life of 25(OH)D: \(halfLifeDays) days
         • Daily decay rate: \(String(format: "%.4f", dailyDecayRate)) (\(String(format: "%.1f", dailyDecayRate * 100))%)
-        • Supplement effect: ~\(Int(steadyStateRisePerThousandIU)) ng/mL rise per 1000 IU/day D3 at steady state
+        • Supplement effect: ~\(Int(steadyStateRisePerThousandIU)) ng/mL rise per 1000 IU/day D3 at steady state (marginal, on top of baseline)
         • D2 effectiveness: 50% of D3
+        • Background input: diet (~190 IU/day) + incidental sun, sized so the model holds the location/season/skin-type baseline with no supplement
         • Sun production: ~\(String(format: "%.1f", baseIUPerMinuteAtUVI1)) IU/min at UVI 1 (full body, clear sky)
         • Sunburn warning: skin-type-specific SED thresholds (Fitzpatrick I–VI)
         • Default sunburn threshold: \(defaultSunburnThresholdSED) SED (type II / fair skin)
         • Vitamin D production: adjusted by Fitzpatrick skin type (melanin absorption)
-        • Default baseline (no lab data): \(Int(defaultBaselineNgML)) ng/mL, adjusted by latitude/season
+        • Default baseline (no lab data): \(Int(defaultBaselineNgML)) ng/mL, adjusted by latitude/season/skin type
 
         ⚠️ This model provides rough estimates only. It is NOT medical advice.
         Consult a healthcare provider for vitamin D testing and supplementation guidance.

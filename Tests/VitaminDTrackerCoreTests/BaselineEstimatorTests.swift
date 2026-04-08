@@ -243,6 +243,53 @@ final class BaselineEstimatorTests: XCTestCase {
             "Seattle at 7 PM in December should have zero UV")
     }
 
+    // MARK: - Skin-Type Adjustment to Baseline
+
+    func testSkinTypeNilOrTypeIIIsNoOp() {
+        let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
+        let date = makeDateForJune15()
+
+        let none = BaselineEstimator.estimateBaseline(location: nyc, date: date, skinType: nil)
+        let typeII = BaselineEstimator.estimateBaseline(location: nyc, date: date, skinType: .typeII)
+
+        XCTAssertEqual(none, typeII, accuracy: 1e-9,
+            "Type II is the reference (multiplier 1.0) so it must equal the nil case exactly")
+    }
+
+    func testDarkerSkinTypeGivesLowerBaseline() {
+        let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
+        let date = makeDateForJune15()
+
+        let typeI  = BaselineEstimator.estimateBaseline(location: miami, date: date, skinType: .typeI)
+        let typeII = BaselineEstimator.estimateBaseline(location: miami, date: date, skinType: .typeII)
+        let typeVI = BaselineEstimator.estimateBaseline(location: miami, date: date, skinType: .typeVI)
+
+        XCTAssertGreaterThan(typeI, typeII,
+            "Type I (multiplier 1.2) should land above the reference")
+        XCTAssertGreaterThan(typeII, typeVI,
+            "Type VI (multiplier 0.20) should land well below the reference")
+    }
+
+    func testSkinTypeOnlyScalesSunPortionNotDietFloor() {
+        // Pick a location/date with a healthy sun-derived portion so the math
+        // is observable above the clamp.
+        let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
+        let date = makeDateForJune15()
+        let dietFloor = ModelingAssumptions.dietaryBaselineFloorNgML
+
+        let typeII = BaselineEstimator.estimateBaseline(location: miami, date: date, skinType: .typeII)
+        let typeIV = BaselineEstimator.estimateBaseline(location: miami, date: date, skinType: .typeIV)
+
+        // Reconstruct the type-IV result by hand: scale the sun portion of
+        // the type-II baseline by the type-IV production multiplier, then
+        // add the diet floor back. Both values are well inside [5, 60] for
+        // Miami in June so the clamp is irrelevant.
+        let sunPortionII = typeII - dietFloor
+        let expectedIV = sunPortionII * FitzpatrickSkinType.typeIV.vitaminDProductionMultiplier + dietFloor
+        XCTAssertEqual(typeIV, expectedIV, accuracy: 1e-6)
+        XCTAssertGreaterThan(typeIV, dietFloor,
+            "Diet floor must remain even when the sun portion is heavily attenuated")
+    }
     // MARK: - Helpers
 
     private func makeDate(month: Int, day: Int, hour: Int, minute: Int) -> Date {

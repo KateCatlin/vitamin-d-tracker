@@ -27,14 +27,20 @@ class DashboardViewModel: ObservableObject {
         currentSupplement = persistence.currentSupplementPlan
         lastSunSession = persistence.mostRecentSunSession
 
-        // Use stored baseline (locked at onboarding), not recalculated from current city
-        if let stored = persistence.baselineLevel {
+        // Live baseline: re-evaluate for the current city, today's season,
+        // and the user's skin type. This is the level the model would
+        // converge to with no supplement and no tracked sun, so it changes
+        // through the year and if the user moves cities or updates their
+        // skin type. The persisted value is kept as a fallback only for
+        // profiles that somehow lack a home location.
+        if let location = persistence.userProfile.homeLocation {
+            baselineLevel = BaselineEstimator.estimateBaseline(
+                location: location,
+                date: Date(),
+                skinType: persistence.userProfile.skinType
+            )
+        } else if let stored = persistence.baselineLevel {
             baselineLevel = stored
-        } else if let location = persistence.userProfile.homeLocation {
-            // Fallback for users who onboarded before baseline was stored
-            let computed = BaselineEstimator.estimateBaseline(location: location)
-            persistence.baselineLevel = computed
-            baselineLevel = computed
         }
 
         isLoading = false
@@ -53,11 +59,14 @@ class DashboardViewModel: ObservableObject {
 
         guard lastDay < today else { return }
 
+        let profile = persistence.userProfile
         let (newEstimate, events) = DailyUpdateService.catchUp(
             lastEstimate: lastEstimate,
             currentDate: Date(),
             supplementPlans: persistence.supplementPlans,
-            sunSessions: persistence.sunSessions
+            sunSessions: persistence.sunSessions,
+            homeLocation: profile.homeLocation,
+            skinType: profile.skinType
         )
 
         if !events.isEmpty {
