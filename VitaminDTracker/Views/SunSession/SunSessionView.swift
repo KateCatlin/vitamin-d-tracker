@@ -4,6 +4,7 @@ import VitaminDTrackerCore
 /// Sun exposure tracking session view.
 struct SunSessionView: View {
     @StateObject private var viewModel = SunSessionViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -26,6 +27,17 @@ struct SunSessionView: View {
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 viewModel.refreshUVEstimate()
+                // Pick up any session that was running when the app was
+                // killed/suspended. No-op if nothing to restore.
+                viewModel.restoreActiveSessionIfNeeded()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                // Snap the timer display to the correct value the
+                // instant we return to foreground, rather than waiting
+                // up to 1s for the next timer fire.
+                if newPhase == .active && viewModel.isSessionActive {
+                    viewModel.syncFromClock()
+                }
             }
             .alert("☀️ Sun Exposure Warning", isPresented: $viewModel.showOverexposureAlert) {
                 Button("Stop Session") {
@@ -280,6 +292,9 @@ struct ActiveSessionContent: View {
                         .foregroundColor(.textSecondary)
                     Slider(value: $viewModel.skinExposureFraction, in: 0.05...1.0, step: 0.05)
                         .tint(.sunOrange)
+                        .onChange(of: viewModel.skinExposureFraction) { _, _ in
+                            viewModel.persistInProgressParameters()
+                        }
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Cloud Cover: \(Int(viewModel.cloudCoverFraction * 100))%")
@@ -287,6 +302,9 @@ struct ActiveSessionContent: View {
                         .foregroundColor(.textSecondary)
                     Slider(value: $viewModel.cloudCoverFraction, in: 0.0...1.0, step: 0.1)
                         .tint(.skyBlue)
+                        .onChange(of: viewModel.cloudCoverFraction) { _, _ in
+                            viewModel.persistInProgressParameters()
+                        }
                 }
             }
             .softCard()

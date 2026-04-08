@@ -168,13 +168,98 @@ class SunSessionViewModel: ObservableObject {
     }
 
     func stopSession() {
+        finalizeSession(endTime: Date())
+    }
+
+    /// Persists the current slider values onto the in-progress session
+    /// so that if the app is killed mid-session, restoration picks up
+    /// the user's most recent skin/cloud adjustments rather than the
+    /// values from session start.
+    func persistInProgressParameters() {
+        guard isSessionActive, var session = currentSession else { return }
+        session.skinExposureFraction = skinExposureFraction
+        session.cloudCoverFraction = cloudCoverFraction
+        currentSession = session
+        persistence.updateSunSession(session)
+    }
+
+    // MARK: - Restoration
+
+    /// Sessions older than this are auto-finalized at this cap rather
+    /// than resumed. The user gets vitamin D credit for the capped
+    /// duration. Per product decision: 1 hour.
+    private static let maxRecoverableSessionSeconds: TimeInterval = 60 * 60
+
+    /// Looks for an orphaned in-progress session in persistence (e.g.
+    /// the app was killed while a session was running) and either
+    /// resumes it or — if it's been too long — finalizes it at the
+    /// 1-hour cap with full vitamin D credit for that hour.
+    ///
+    /// Call from `.onAppear`. No-op if a session is already active or
+    /// no orphan exists.
+    func restoreActiveSessionIfNeeded() {
+        guard !isSessionActive,
+              let orphan = persistence.sunSessions
+                .last(where: { !$0.isCompleted && $0.endTime == nil })
+        else { return }
+
+        // Hydrate VM state from the persisted session so both the
+        // resume path and the stale-finalize path compute against the
+        // user's actual parameters.
+        currentSession = orphan
+        skinExposureFraction = orphan.skinExposureFraction
+        cloudCoverFraction = orphan.cloudCoverFraction
+        estimatedUVIndex = orphan.estimatedUVIndex
+
+        if orphan.durationSeconds > Self.maxRecoverableSessionSeconds {
+            // Stale. Assume they stopped at the 1-hour mark and credit
+            // them as if they did.
+            let cappedEnd = orphan.startTime
+                .addingTimeInterval(Self.maxRecoverableSessionSeconds)
+            finalizeSession(endTime: cappedEnd)
+            return
+        }
+
+        // Resume the live session.
+        isSessionActive = true
+
+        // Suppress the alert during the restoring sync — if the user
+        // was already past safe time when they backgrounded, popping
+        // it again on return is just noise. Re-arm afterwards only if
+        // they're still under the threshold.
+        hasShownOverexposureWarning = true
+        syncFromClock()
+        if !isOverexposed {
+            hasShownOverexposureWarning = false
+        }
+
+        startTimer()
+    }
+
+    // MARK: - Finalization
+
+    /// Shared completion path used by both the user-initiated stop and
+    /// the stale-session auto-cap. Computes the gain for the actual
+    /// `startTime → endTime` window so a capped session is credited
+    /// for exactly that duration.
+    private func finalizeSession(endTime: Date) {
         timer?.invalidate()
         timer = nil
         isSessionActive = false
 
         guard var session = currentSession else { return }
-        session.endTime = Date()
-        session.estimatedVitaminDGain = estimatedGain
+
+        let finalDurationSeconds = endTime.timeIntervalSince(session.startTime)
+        let finalGain = SunExposureCalculator.estimateVitaminDGain(
+            uvIndex: estimatedUVIndex,
+            skinExposureFraction: skinExposureFraction,
+            cloudCoverFraction: cloudCoverFraction,
+            durationMinutes: finalDurationSeconds / 60.0,
+            skinType: userSkinType
+        )
+
+        session.endTime = endTime
+        session.estimatedVitaminDGain = finalGain
         session.isCompleted = true
         session.skinExposureFraction = skinExposureFraction
         session.cloudCoverFraction = cloudCoverFraction
@@ -185,15 +270,19 @@ class SunSessionViewModel: ObservableObject {
         // Update the current estimate
         if var estimate = persistence.currentEstimate {
             estimate = VitaminDStateEstimate(
-                estimatedLevel: estimate.estimatedLevel + estimatedGain,
+                estimatedLevel: estimate.estimatedLevel + finalGain,
                 source: .modelEstimate,
                 confidence: estimate.confidence,
                 date: Date(),
-                note: "Updated after sun session (+\(String(format: "%.1f", estimatedGain)) ng/mL)"
+                note: "Updated after sun session (+\(String(format: "%.1f", finalGain)) ng/mL)"
             )
             persistence.currentEstimate = estimate
         }
 
+        // Sync published values so SessionCompleteContent reflects the
+        // (possibly capped) finalized numbers.
+        estimatedGain = finalGain
+        elapsedSeconds = finalDurationSeconds
         currentSession = session
         AnalyticsService.shared.log(.sunSessionCompleted)
     }
@@ -201,17 +290,32 @@ class SunSessionViewModel: ObservableObject {
     // MARK: - Timer
 
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        // The timer is purely a UI-refresh trigger now — `syncFromClock`
+        // recomputes elapsed from the wall clock every fire, so missed
+        // ticks while suspended don't matter.
+        let t = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.tick()
+                self?.syncFromClock()
             }
         }
+        // `.common` keeps the timer firing while the user drags the
+        // sliders or scrolls the ScrollView.
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
-    private func tick() {
-        guard isSessionActive else { return }
+    /// Recomputes all session-derived published state from the wall
+    /// clock. Because elapsed time is read from
+    /// `SunExposureSession.durationSeconds` (which diffs `Date()`
+    /// against `startTime`) rather than incremented, this is correct
+    /// after any gap — backgrounding, suspension, or app kill.
+    ///
+    /// Called every second by the timer and immediately by the view
+    /// on `scenePhase → .active`.
+    func syncFromClock() {
+        guard isSessionActive, let session = currentSession else { return }
 
-        elapsedSeconds += 1
+        elapsedSeconds = session.durationSeconds
 
         // Update vitamin D gain estimate
         estimatedGain = SunExposureCalculator.estimateVitaminDGain(
