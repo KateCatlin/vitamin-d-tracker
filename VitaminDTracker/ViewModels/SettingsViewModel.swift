@@ -103,11 +103,14 @@ class SettingsViewModel: ObservableObject {
         persistence.addTestResult(testResult)
 
         // Recalculate estimate from this new anchor
+        let profile = persistence.userProfile
         let (estimate, events) = DailyUpdateService.applyLabResult(
             testResult: testResult,
             currentDate: Date(),
             supplementPlans: persistence.supplementPlans,
-            sunSessions: persistence.sunSessions
+            sunSessions: persistence.sunSessions,
+            homeLocation: profile.homeLocation,
+            skinType: profile.skinType
         )
         persistence.currentEstimate = estimate
         if !events.isEmpty {

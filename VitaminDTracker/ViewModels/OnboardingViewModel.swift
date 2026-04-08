@@ -104,7 +104,10 @@ class OnboardingViewModel: ObservableObject {
         persistence.userProfile = profile
 
         // Lock in the baseline level at onboarding time
-        let baseline = BaselineEstimator.estimateBaseline(location: city)
+        let baseline = BaselineEstimator.estimateBaseline(
+            location: city,
+            skinType: selectedSkinType
+        )
         persistence.baselineLevel = baseline
 
         // Save supplement plan
@@ -129,7 +132,9 @@ class OnboardingViewModel: ObservableObject {
                 testResult: testResult,
                 currentDate: Date(),
                 supplementPlans: persistence.supplementPlans,
-                sunSessions: persistence.sunSessions
+                sunSessions: persistence.sunSessions,
+                homeLocation: city,
+                skinType: selectedSkinType
             )
             persistence.currentEstimate = estimate
             if !events.isEmpty {
@@ -140,7 +145,8 @@ class OnboardingViewModel: ObservableObject {
         } else {
             let estimate = DailyUpdateService.createBaselineEstimate(
                 location: city,
-                date: Date()
+                date: Date(),
+                skinType: selectedSkinType
             )
             persistence.currentEstimate = estimate
         }

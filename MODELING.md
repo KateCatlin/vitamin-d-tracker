@@ -92,6 +92,30 @@ For the Southern Hemisphere, the peak shifts by ~183 days.
 
 **Source:** Klingberg E, et al. Seasonal variations in serum 25-hydroxy vitamin D levels in a Swedish cohort. *Endocrine.* 2015;49(3):800-808.
 
+### 3.4 Fitzpatrick Skin-Type Adjustment to Baseline
+
+The same `vitaminDProductionMultiplier` used for tracked sun sessions (§6.3) is applied to the **sun-derived portion** of the baseline. NHANES 2001-04 reports a non-Hispanic Black population mean of ~16 ng/mL versus ~26 ng/mL for non-Hispanic Whites — almost entirely an incidental-sun effect. Diet (~190 IU/day → ~2 ng/mL) is unaffected by melanin, so:
+
+```
+sun_portion = max(unadjusted_baseline − 2, 0)
+baseline    = sun_portion × skin_type_multiplier + 2
+```
+
+With Type II (multiplier 1.0) or no skin type, this is a no-op.
+
+### 3.5 Background Input (Diet + Incidental Sun)
+
+**Why this term exists.** The supplement dose-response in §5.1 (~10 ng/mL per 1000 IU) is a *marginal* effect: Heaney 2003 measured the rise above each subject's existing baseline while they continued to live normally. Treating it as the *only* input — as the model originally did — converges everyone toward `dose / 100` ng/mL, as if they ate zero vitamin D and never went outside. NHANES 2001-04 puts the unsupplemented US mean at ~24 ng/mL, even though dietary intake (~190 IU/day, NHANES 2015-16) alone would only sustain ~2 ng/mL. The gap is incidental sun exposure no one ever logs.
+
+**Model.** Each day receives a background gain that exactly cancels decay at the local baseline:
+
+```
+baseline_today  = estimateBaseline(location, today, skin_type)   // §3.1–3.4, re-evaluated per day
+background_gain = baseline_today × daily_decay_rate
+```
+
+With no supplement and no tracked sun the level converges to `baseline_today`; the supplement effect (+10 ng/mL per 1000 IU D3) stacks additively on top. Tracked sun sessions encode *deliberate* exposure and are additive to the baseline's *incidental* exposure — there is no double-count.
+
 ---
 
 ## 4. Decay Model (Half-Life)
@@ -148,6 +172,8 @@ daily_supplement_rise = (dose_IU / 1000) × 10 × daily_decay_rate
 ```
 
 This produces the correct steady-state level while being simple to compute day-by-day.
+
+> **Note:** "steady state" here is the *marginal* increment from the supplement alone. With the background term (§3.5) active, the model converges toward `baseline + (dose_IU / 100)`, not `dose_IU / 100` by itself.
 
 ### 5.3 Vitamin D2 vs D3 Effectiveness
 
@@ -312,9 +338,12 @@ Example: At UV index 7 (clear sky), max safe time for fair skin ≈ 2.5 / (7 × 
 Each day at midnight (Pacific Time, approximated), the model:
 
 1. **Applies decay**: `level = level × (1 - 0.0325)`
-2. **Applies supplement**: `level += daily_supplement_rise`
-3. **Adds sun gains**: `level += sum of session gains for that day`
-4. **Records the event** with all component values
+2. **Applies background**: `level += baseline_today × 0.0325` (diet + incidental sun, see §3.5)
+3. **Applies supplement**: `level += daily_supplement_rise`
+4. **Adds sun gains**: `level += sum of session gains for that day`
+5. **Records the event** with all component values
+
+`baseline_today` is re-evaluated for the calendar date being processed, so a multi-day catch-up moves through the seasonal curve correctly.
 
 ### 8.1 Catch-Up on App Open
 
@@ -349,7 +378,7 @@ This is a simplified model. In production, integrating a weather/UV API (e.g., O
 - Individual variation in vitamin D metabolism (body weight, age, skin pigmentation, genetics)
 - Simplified single-compartment pharmacokinetic model
 - UV index estimation without real weather data
-- No accounting for dietary vitamin D intake
+- Background input is a population-level estimate of incidental sun (indoor workers, shift workers, and people who avoid the sun will be overestimated)
 - No accounting for medications that affect vitamin D metabolism
 - Fitzpatrick skin type multipliers are approximate population-level estimates
 - No accounting for sunscreen use

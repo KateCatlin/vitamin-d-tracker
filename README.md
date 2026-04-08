@@ -15,21 +15,56 @@ A native iPhone app that helps you estimate your current vitamin D level over ti
 - **Daily background updates** — Automatic decay and supplementation modeling with catch-up logic if background tasks are missed
 - **Beautiful design** — Light, bright, minimal UI with soft cards, rounded corners, and a sunlight-inspired yellow & sky-blue palette
 
-## Estimation Model
+## How the Estimate Is Calculated
 
-The core vitamin D estimation model includes:
+Every midnight (or on the next app open if the phone slept through it), the model runs one update per missed day:
 
-| Component | Approach |
-|---|---|
-| **Decay** | First-order kinetics with a 21-day half-life (~3.25%/day loss) |
-| **Supplementation** | ~10 ng/mL per 1,000 IU/day D3 at steady state; D2 at 50% effectiveness |
-| **Sun exposure** | UV index × skin fraction × cloud attenuation × Fitzpatrick multiplier × saturating-exponential duration |
-| **Fitzpatrick skin type (I–VI)** | Adjusts vitamin D production rate (1.2× for Type I down to 0.2× for Type VI) and sunburn SED thresholds |
-| **Sunburn risk** | Standard Erythemal Dose (SED) accumulation with skin-type-specific thresholds |
-| **Baseline estimation** | Latitude adjustment + cosine seasonal model when no lab data is available |
-| **Lab anchoring** | New lab results become trusted anchors that reset projection baselines |
+```
+new_level = current_level − decay + background + supplement + tracked_sun
+```
 
-For full equations, constants, simplifications, confidence limitations, and 14 scientific references, see [**MODELING.md**](MODELING.md).
+Each term has a single line of arithmetic and a paper behind it.
+
+### 1. Decay — `current_level × 0.0325`
+
+Circulating 25(OH)D follows first-order elimination with a **21-day half-life**, giving a daily decay rate of `1 − 2^(−1/21) ≈ 3.25%`. The literature reports 15–25 days; 21 is a central value.
+
+> [Jones et al. 2014, *J Clin Endocrinol Metab*](https://pubmed.ncbi.nlm.nih.gov/24885631/) — measured 25(OH)D₃ half-life directly with stable-isotope tracers.
+
+### 2. Background — `baseline_today × 0.0325`
+
+Diet and incidental everyday sun (walking to the car, errands) keep an unsupplemented person near a baseline that depends on **city, season, and skin type** — not zero. NHANES puts the unsupplemented US mean at ~24 ng/mL even though dietary intake (~190 IU/day) alone would only sustain ~2 ng/mL; the gap is incidental sun no one ever logs.
+
+This term is sized so that with no supplement and no tracked sun, the model holds steady at whatever `BaselineEstimator` predicts for that location and date — re-evaluated every day, so it drifts down through your city's winter and back up through summer.
+
+> [NIH Office of Dietary Supplements, Vitamin D Fact Sheet](https://ods.od.nih.gov/factsheets/VitaminD-HealthProfessional/) — *"serum 25(OH)D levels are usually higher than would be predicted on the basis of vitamin D dietary intakes alone"*  
+> [Looker et al. 2008, *Am J Clin Nutr*](https://pubmed.ncbi.nlm.nih.gov/19064511/) — NHANES population means (~24 ng/mL overall, ~10 ng/mL Black/White gap)  
+> [Klingberg et al. 2015, *Endocrine*](https://pubmed.ncbi.nlm.nih.gov/25681052/) — seasonal swing amplitude  
+> [Webb, Kline & Holick 1988, *J Clin Endocrinol Metab*](https://pubmed.ncbi.nlm.nih.gov/2839537/) — latitude cutoff for winter cutaneous synthesis  
+> [Clemens et al. 1982, *Lancet*](https://pubmed.ncbi.nlm.nih.gov/6119494/) — melanin attenuation of vitamin D synthesis
+
+### 3. Supplement — `(dose_IU / 1000) × 10 × 0.0325`
+
+About **+10 ng/mL per 1,000 IU/day of D3** at steady state, applied as a daily increment. **D2** is modelled at **50% effectiveness**.
+
+This is a *marginal* effect — the rise *above* baseline — which is why the background term above is needed. Without it, the model drifts toward `dose / 100` ng/mL as if you lived in a dark box.
+
+> [Heaney et al. 2003, *Am J Clin Nutr*](https://pubmed.ncbi.nlm.nih.gov/12499343/) — established the ~10 ng/mL per 1,000 IU dose-response  
+> [Tripkovic et al. 2012, *Am J Clin Nutr*](https://pubmed.ncbi.nlm.nih.gov/22552031/) — meta-analysis: D3 raises 25(OH)D more effectively than D2
+
+### 4. Tracked sun sessions — `IU_produced / 1200`
+
+For deliberately logged sessions: `UV index × skin fraction × cloud attenuation × Fitzpatrick multiplier`, run through a saturating-exponential duration curve (production plateaus after ~30 min at high UV as previtamin D₃ photodegrades). **No vitamin D is credited at UV index < 3.**
+
+> [Holick 2007, *N Engl J Med*](https://pubmed.ncbi.nlm.nih.gov/17634462/) — production rates under realistic conditions  
+> [Holick 2004, *Am J Clin Nutr*](https://pubmed.ncbi.nlm.nih.gov/14985208/) — previtamin D₃ photodegradation plateau  
+> [WHO Global Solar UV Index, 2002](https://www.who.int/publications/i/item/9241590076) — UV index scale, cloud transmission, SED definitions
+
+### 5. Lab results override everything
+
+A blood test becomes a trusted anchor: the model resets to that value on the test date and replays steps 1–4 forward to today.
+
+For full equations, simplifying assumptions, confidence limitations, and the complete reference list, see [**MODELING.md**](MODELING.md).
 
 ## Project Structure
 
@@ -40,7 +75,7 @@ vitamin-d-tracker/
 │   ├── Views/                      # Onboarding, Dashboard, Sun Session, Settings
 │   ├── ViewModels/                 # MVVM ObservableObject view models
 │   └── ...
-├── Tests/                          # 101+ unit tests
+├── Tests/                          # 140+ unit tests
 ├── MODELING.md                     # Scientific model documentation
 └── README.md
 ```
@@ -94,13 +129,14 @@ Run the full test suite from the command line:
 swift test
 ```
 
-Or use `⌘U` in Xcode. The suite includes 101+ tests covering decay half-life correctness, D2/D3 differential behavior, forward-only supplement changes, multi-day catch-up idempotency, sun exposure diminishing returns, SED overexposure thresholds, unit conversions (ng/mL ↔ nmol/L), baseline latitude/seasonal effects, and Fitzpatrick skin type modeling.
+Or use `⌘U` in Xcode. The suite includes 140+ tests covering decay half-life correctness, D2/D3 differential behavior, forward-only supplement changes, multi-day catch-up idempotency, background-input convergence, sun exposure diminishing returns, SED overexposure thresholds, unit conversions (ng/mL ↔ nmol/L), baseline latitude/seasonal/skin-type effects, and Fitzpatrick skin type modeling.
 
 ## Background Daily Updates
 
 ### Intended Behavior
 The estimated vitamin D level updates at midnight each day, applying:
 - Daily metabolic decay
+- Background input (diet + incidental sun, season-aware)
 - Daily supplement contribution
 
 ### iOS Implementation

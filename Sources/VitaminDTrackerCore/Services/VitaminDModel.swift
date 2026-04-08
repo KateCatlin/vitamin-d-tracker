@@ -54,22 +54,28 @@ public struct VitaminDModel {
         )
     }
 
-    /// Apply a complete daily update (decay + supplement).
+    /// Apply a complete daily update (decay + supplement + sun + background).
     ///
     /// - Parameters:
     ///   - currentLevel: Current 25(OH)D level in ng/mL.
     ///   - plan: The active supplement plan.
-    ///   - sunGain: Additional gain from sun exposure sessions (default 0).
+    ///   - sunGain: Additional gain from explicitly tracked sun sessions (default 0).
+    ///   - backgroundGain: Daily gain from diet + incidental sun the user never
+    ///     logs (default 0). See `ModelingAssumptions.dailyBackgroundRise` for
+    ///     why this term exists. Pass 0 to recover the legacy supplement-only
+    ///     behaviour, which is what the unit tests for the supplement dose-
+    ///     response do.
     /// - Returns: A tuple of (newLevel, decayAmount, supplementGain).
     public static func applyDailyUpdate(
         currentLevel: Double,
         plan: SupplementPlan,
-        sunGain: Double = 0.0
+        sunGain: Double = 0.0,
+        backgroundGain: Double = 0.0
     ) -> (newLevel: Double, decayAmount: Double, supplementGain: Double) {
         let decay = dailyDecayAmount(currentLevel: currentLevel)
         let afterDecay = currentLevel - decay
         let suppGain = dailySupplementGain(plan: plan)
-        let newLevel = afterDecay + suppGain + sunGain
+        let newLevel = afterDecay + suppGain + sunGain + backgroundGain
         return (newLevel: max(newLevel, 0.0), decayAmount: decay, supplementGain: suppGain)
     }
 
@@ -78,8 +84,14 @@ public struct VitaminDModel {
     ///
     /// steadyState = supplementGain / decayRate
     ///
+    /// **Note:** this is the *marginal* contribution of the supplement alone —
+    /// the amount the supplement adds on top of whatever baseline the user
+    /// would otherwise have. With the background term active in
+    /// `computeCurrentLevel`, the model converges toward
+    /// `baseline + steadyStateLevel(plan)`, not `steadyStateLevel(plan)` alone.
+    ///
     /// - Parameter plan: The supplement plan.
-    /// - Returns: Estimated steady-state 25(OH)D level in ng/mL.
+    /// - Returns: Marginal steady-state increment in ng/mL.
     public static func steadyStateLevel(plan: SupplementPlan) -> Double {
         let gain = dailySupplementGain(plan: plan)
         let decayRate = ModelingAssumptions.dailyDecayRate
@@ -89,19 +101,44 @@ public struct VitaminDModel {
 
     /// Compute the estimated current level by replaying events from an anchor point.
     ///
+    /// **Background term.** When `homeLocation` is provided, each replayed day
+    /// also receives a small "background" gain representing diet (~190 IU/day
+    /// per NHANES) plus incidental sun exposure that the user never tracks.
+    /// Without it, the supplement dose-response — which is a *marginal* effect
+    /// in the literature — gets misinterpreted as an absolute, and the model
+    /// drifts toward `dose / 100` ng/mL as if the user lived in a dark box.
+    ///
+    /// The background term is sized so that with no supplement and no tracked
+    /// sun the level converges to whatever `BaselineEstimator.estimateBaseline`
+    /// predicts for that location/date/skin type. The baseline is re-evaluated
+    /// for each replayed day, so the user gently drifts down through their
+    /// city's winter and back up through summer. The supplement effect remains
+    /// exactly +10 ng/mL per 1000 IU D3, but now correctly stacked on top.
+    ///
+    /// Tracked sun sessions are *additional* to the background term: the
+    /// baseline encodes typical incidental exposure (walk to the car, errands),
+    /// not deliberate sunbathing, so a logged 30-minute session is genuinely
+    /// additive.
+    ///
     /// - Parameters:
     ///   - anchorLevel: The starting level (from lab test or baseline estimate).
     ///   - anchorDate: The date of the anchor.
     ///   - currentDate: The date to estimate for.
     ///   - supplementPlans: All supplement plans, sorted by effective date ascending.
     ///   - sunSessions: All completed sun sessions, sorted by start date ascending.
+    ///   - homeLocation: User's home location. When `nil`, no background term
+    ///     is applied (legacy supplement-only behaviour).
+    ///   - skinType: Fitzpatrick skin type. Adjusts the incidental-sun portion
+    ///     of the background baseline. When `nil`, fair-skin reference is used.
     /// - Returns: The estimated current level and a list of daily update events.
     public static func computeCurrentLevel(
         anchorLevel: Double,
         anchorDate: Date,
         currentDate: Date,
         supplementPlans: [SupplementPlan],
-        sunSessions: [SunExposureSession]
+        sunSessions: [SunExposureSession],
+        homeLocation: HomeLocation? = nil,
+        skinType: FitzpatrickSkinType? = nil
     ) -> (estimatedLevel: Double, events: [DailyUpdateEvent]) {
         let calendar = Calendar(identifier: .gregorian)
         let startOfAnchor = calendar.startOfDay(for: anchorDate)
@@ -130,11 +167,27 @@ public struct VitaminDModel {
             // Find sun sessions completed on this day
             let daySunGain = sunGainForDay(date: dayDate, sessions: sunSessions, calendar: calendar)
 
+            // Background gain: re-evaluate the baseline for *this* calendar day
+            // so the term drifts with the season. With homeLocation == nil this
+            // is 0 and we get the legacy supplement-only behaviour.
+            let dayBackgroundGain: Double
+            if let location = homeLocation {
+                let dayBaseline = BaselineEstimator.estimateBaseline(
+                    location: location,
+                    date: dayDate,
+                    skinType: skinType
+                )
+                dayBackgroundGain = ModelingAssumptions.dailyBackgroundRise(forBaselineNgML: dayBaseline)
+            } else {
+                dayBackgroundGain = 0.0
+            }
+
             // Apply daily update
             let (newLevel, decayAmt, suppGain) = applyDailyUpdate(
                 currentLevel: level,
                 plan: activePlan ?? SupplementPlan(dailyDoseIU: 0, vitaminDType: .d3),
-                sunGain: daySunGain
+                sunGain: daySunGain,
+                backgroundGain: dayBackgroundGain
             )
 
             let event = DailyUpdateEvent(
@@ -143,6 +196,7 @@ public struct VitaminDModel {
                 decayAmount: decayAmt,
                 supplementGain: suppGain,
                 sunExposureGain: daySunGain,
+                backgroundGain: dayBackgroundGain,
                 newLevel: newLevel,
                 activeDoseIU: activePlan?.dailyDoseIU ?? 0,
                 activeVitaminDType: activePlan?.vitaminDType ?? .d3

@@ -14,20 +14,46 @@ public struct BaselineEstimator {
 
     /// Estimate baseline vitamin D level in ng/mL from location and date.
     ///
+    /// This is the level a typical person at this location would settle at with
+    /// **no supplements and no deliberately tracked sun sessions** — i.e. it
+    /// reflects diet (~190 IU/day per NHANES 2015-16) plus *incidental* sun
+    /// (walking to the car, errands, etc.). Per NIH ODS, the US population mean
+    /// is ~24 ng/mL despite dietary intake that alone would only sustain ~2 ng/mL;
+    /// the gap is incidental sun exposure that no one ever logs.
+    ///
+    /// The latitude and seasonal adjustments encode how that incidental-sun
+    /// portion shrinks at high latitudes and in winter, and the optional
+    /// `skinType` adjustment encodes how melanin attenuates it (NHANES shows
+    /// ~10 ng/mL lower mean for non-Hispanic Black vs. White Americans).
+    ///
     /// - Parameters:
     ///   - location: The user's home location.
     ///   - date: The date for the estimate (to account for seasonality).
+    ///   - skinType: Fitzpatrick skin type. When provided, the sun-derived
+    ///     portion of the baseline is scaled by `vitaminDProductionMultiplier`.
+    ///     Diet is unaffected by melanin, so a small dietary floor is preserved.
     /// - Returns: Estimated 25(OH)D level in ng/mL.
     public static func estimateBaseline(
         location: HomeLocation,
-        date: Date = Date()
+        date: Date = Date(),
+        skinType: FitzpatrickSkinType? = nil
     ) -> Double {
         let latitudeAdjustment = latitudeEffect(latitude: location.latitude)
         let seasonalAdjustment = seasonalEffect(latitude: location.latitude, date: date)
 
-        let baseline = ModelingAssumptions.defaultBaselineNgML
+        let unadjusted = ModelingAssumptions.defaultBaselineNgML
             + latitudeAdjustment
             + seasonalAdjustment
+
+        // Skin-type adjustment: scale only the sun-derived portion.
+        // Dietary intake (~190 IU/day ≈ ~2 ng/mL at steady state) is unaffected
+        // by melanin, so we hold that floor constant and apply the multiplier
+        // to everything above it. With skinType nil or .typeII (multiplier 1.0)
+        // this is a no-op.
+        let dietFloor = ModelingAssumptions.dietaryBaselineFloorNgML
+        let sunPortion = max(unadjusted - dietFloor, 0.0)
+        let skinMultiplier = ModelingAssumptions.vitaminDProductionMultiplier(for: skinType)
+        let baseline = sunPortion * skinMultiplier + dietFloor
 
         // Clamp to reasonable range (5 - 60 ng/mL for baseline estimates)
         return min(max(baseline, 5.0), 60.0)

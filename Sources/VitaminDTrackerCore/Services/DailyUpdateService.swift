@@ -18,19 +18,25 @@ public struct DailyUpdateService {
     ///   - currentDate: The current date (default: now).
     ///   - supplementPlans: All supplement plans.
     ///   - sunSessions: All completed sun sessions.
+    ///   - homeLocation: Optional. User's home location.
+    ///   - skinType: Optional. User's skin type.
     /// - Returns: The new estimate and all daily events generated.
     public static func catchUp(
         lastEstimate: VitaminDStateEstimate,
         currentDate: Date = Date(),
         supplementPlans: [SupplementPlan],
-        sunSessions: [SunExposureSession]
+        sunSessions: [SunExposureSession],
+        homeLocation: HomeLocation? = nil,
+        skinType: FitzpatrickSkinType? = nil
     ) -> (newEstimate: VitaminDStateEstimate, events: [DailyUpdateEvent]) {
         let (level, events) = VitaminDModel.computeCurrentLevel(
             anchorLevel: lastEstimate.estimatedLevel,
             anchorDate: lastEstimate.date,
             currentDate: currentDate,
             supplementPlans: supplementPlans,
-            sunSessions: sunSessions
+            sunSessions: sunSessions,
+            homeLocation: homeLocation,
+            skinType: skinType
         )
 
         guard !events.isEmpty else {
@@ -59,12 +65,16 @@ public struct DailyUpdateService {
     ///   - currentDate: The current date (default: now).
     ///   - supplementPlans: All supplement plans.
     ///   - sunSessions: All completed sun sessions.
+    ///   - homeLocation: Optional. User's home location.
+    ///   - skinType: Optional. User's skin type.
     /// - Returns: The new estimate based on the lab anchor.
     public static func applyLabResult(
         testResult: VitaminDTestResult,
         currentDate: Date = Date(),
         supplementPlans: [SupplementPlan],
-        sunSessions: [SunExposureSession]
+        sunSessions: [SunExposureSession],
+        homeLocation: HomeLocation? = nil,
+        skinType: FitzpatrickSkinType? = nil
     ) -> (newEstimate: VitaminDStateEstimate, events: [DailyUpdateEvent]) {
         let labLevelNgML = testResult.valueInNgPerML
 
@@ -90,7 +100,9 @@ public struct DailyUpdateService {
             anchorDate: testResult.testDate,
             currentDate: currentDate,
             supplementPlans: supplementPlans,
-            sunSessions: sunSessions
+            sunSessions: sunSessions,
+            homeLocation: homeLocation,
+            skinType: skinType
         )
 
         let confidence: ConfidenceLevel = events.count <= 14 ? .high : .moderate
@@ -112,12 +124,18 @@ public struct DailyUpdateService {
     /// - Parameters:
     ///   - location: User's home location.
     ///   - date: The date for the estimate.
+    ///   - skinType: Optional. User's skin type.
     /// - Returns: A baseline estimate.
     public static func createBaselineEstimate(
         location: HomeLocation,
-        date: Date = Date()
+        date: Date = Date(),
+        skinType: FitzpatrickSkinType? = nil
     ) -> VitaminDStateEstimate {
-        let baseline = BaselineEstimator.estimateBaseline(location: location, date: date)
+        let baseline = BaselineEstimator.estimateBaseline(
+            location: location,
+            date: date,
+            skinType: skinType
+        )
         return VitaminDStateEstimate(
             estimatedLevel: baseline,
             source: .geographicEstimate,

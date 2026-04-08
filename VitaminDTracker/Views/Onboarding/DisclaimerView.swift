@@ -23,9 +23,14 @@ struct DisclaimerView: View {
                         text: "Vitamin D has a half-life of about 3 weeks. Your level naturally decreases over time without input."
                     )
                     ExplanationRow(
+                        icon: "fork.knife",
+                        title: "Background Input",
+                        text: "Diet and incidental everyday sun keep your level near a baseline that depends on your city, the season, and your skin type — even before any supplement."
+                    )
+                    ExplanationRow(
                         icon: "pills.fill",
                         title: "Supplements",
-                        text: "Daily supplements gradually raise your estimated level. D3 is more effective than D2 per IU."
+                        text: "Daily supplements add about 10 ng/mL per 1000 IU of D3 on top of that baseline. D3 is more effective than D2 per IU."
                     )
                     ExplanationRow(
                         icon: "sun.max.fill",
