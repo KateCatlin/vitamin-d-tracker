@@ -69,7 +69,7 @@ final class BaselineEstimatorTests: XCTestCase {
     func testUVIndexPositiveDuringDay() {
         let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
         // Create a noon time in summer
-        let noonSummer = makeNoonDate(month: 6, day: 15)
+        let noonSummer = makeNoonDate(month: 6, day: 15, utcOffsetHours: -5)
         let uvi = BaselineEstimator.estimateUVIndex(location: miami, date: noonSummer)
         XCTAssertGreaterThan(uvi, 0.0)
     }
@@ -78,9 +78,12 @@ final class BaselineEstimatorTests: XCTestCase {
         let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
         let anchorage = HomeLocation(cityName: "Anchorage", latitude: 61.2, longitude: -149.9)
 
-        let noonSummer = makeNoonDate(month: 6, day: 15)
-        let miamiUV = BaselineEstimator.estimateUVIndex(location: miami, date: noonSummer)
-        let anchorageUV = BaselineEstimator.estimateUVIndex(location: anchorage, date: noonSummer)
+        // Each city gets its own local-noon instant — comparing the same
+        // UTC instant would put Anchorage at 7 AM, which proves nothing.
+        let miamiNoon = makeNoonDate(month: 6, day: 15, utcOffsetHours: -5)
+        let anchorageNoon = makeNoonDate(month: 6, day: 15, utcOffsetHours: -10)
+        let miamiUV = BaselineEstimator.estimateUVIndex(location: miami, date: miamiNoon)
+        let anchorageUV = BaselineEstimator.estimateUVIndex(location: anchorage, date: anchorageNoon)
 
         XCTAssertGreaterThan(miamiUV, anchorageUV)
     }
@@ -111,7 +114,7 @@ final class BaselineEstimatorTests: XCTestCase {
 
     func testUVIndexZeroAtNight() {
         let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
-        let nightDate = makeDate(month: 6, day: 15, hour: 23, minute: 0)
+        let nightDate = makeDate(month: 6, day: 15, hour: 23, minute: 0, utcOffsetHours: -5)
         let uvi = BaselineEstimator.estimateUVIndex(location: nyc, date: nightDate)
         XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
             "UV index at 11 PM should be zero")
@@ -119,7 +122,7 @@ final class BaselineEstimatorTests: XCTestCase {
 
     func testUVIndexAboveThresholdAtMiddaySummer() {
         let nyc = HomeLocation(cityName: "New York", latitude: 40.7, longitude: -74.0)
-        let noonSummer = makeNoonDate(month: 6, day: 15)
+        let noonSummer = makeNoonDate(month: 6, day: 15, utcOffsetHours: -5)
         let uvi = BaselineEstimator.estimateUVIndex(location: nyc, date: noonSummer)
         XCTAssertGreaterThanOrEqual(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
             "UV index at noon in summer should meet the vitamin D production threshold")
@@ -127,7 +130,7 @@ final class BaselineEstimatorTests: XCTestCase {
 
     func testUVIndexZeroLateAtNight() {
         let miami = HomeLocation(cityName: "Miami", latitude: 25.7, longitude: -80.2)
-        let lateNight = makeDate(month: 7, day: 1, hour: 22, minute: 30)
+        let lateNight = makeDate(month: 7, day: 1, hour: 22, minute: 30, utcOffsetHours: -5)
         let uvi = BaselineEstimator.estimateUVIndex(location: miami, date: lateNight)
         XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
             "UV index at 10:30 PM should be zero")
@@ -136,7 +139,7 @@ final class BaselineEstimatorTests: XCTestCase {
     func testUVIndexZeroAtEarlyMorning() {
         let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
                                 latitude: 22.89, longitude: -109.92)
-        let earlyMorning = makeDate(month: 4, day: 7, hour: 3, minute: 0)
+        let earlyMorning = makeDate(month: 4, day: 7, hour: 3, minute: 0, utcOffsetHours: -7)
         let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: earlyMorning)
         XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
             "UV index at 3 AM should be zero")
@@ -150,7 +153,7 @@ final class BaselineEstimatorTests: XCTestCase {
         // because the seasonal swing was applied uniformly to every latitude.
         let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
                                 latitude: 22.89, longitude: -109.92)
-        let noonApril = makeNoonDate(month: 4, day: 7)
+        let noonApril = makeNoonDate(month: 4, day: 7, utcOffsetHours: -7)
         let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: noonApril)
         XCTAssertGreaterThan(uvi, 9.0,
             "Cabo at noon in April should have very high UV (~10+), got \(uvi)")
@@ -161,7 +164,7 @@ final class BaselineEstimatorTests: XCTestCase {
         // would force UV to ~0 at the winter solstice — wrong for the tropics.
         let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
                                 latitude: 22.89, longitude: -109.92)
-        let noonDecSolstice = makeNoonDate(month: 12, day: 21)
+        let noonDecSolstice = makeNoonDate(month: 12, day: 21, utcOffsetHours: -7)
         let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: noonDecSolstice)
         XCTAssertGreaterThanOrEqual(uvi, ModelingAssumptions.minimumUVIndexForVitaminD,
             "Cabo at noon on the winter solstice should still produce vitamin D, got UV \(uvi)")
@@ -172,7 +175,7 @@ final class BaselineEstimatorTests: XCTestCase {
         // so UV should stay high in every month.
         let equator = HomeLocation(cityName: "Equator", latitude: 0.0, longitude: 0.0)
         for month in 1...12 {
-            let noon = makeNoonDate(month: month, day: 15)
+            let noon = makeNoonDate(month: month, day: 15, utcOffsetHours: 0)
             let uvi = BaselineEstimator.estimateUVIndex(location: equator, date: noon)
             XCTAssertGreaterThan(uvi, 8.0,
                 "Equator at noon should have UV > 8 year-round; month \(month) gave \(uvi)")
@@ -182,10 +185,43 @@ final class BaselineEstimatorTests: XCTestCase {
     func testHighLatitudeStillHasLargeSeasonalSwing() {
         // Make sure coupling didn't kill seasonal variation where it belongs.
         let seattle = HomeLocation(cityName: "Seattle", latitude: 47.6, longitude: -122.3)
-        let summerUV = BaselineEstimator.estimateUVIndex(location: seattle, date: makeNoonDate(month: 6, day: 21))
-        let winterUV = BaselineEstimator.estimateUVIndex(location: seattle, date: makeNoonDate(month: 12, day: 21))
+        let summerUV = BaselineEstimator.estimateUVIndex(location: seattle, date: makeNoonDate(month: 6, day: 21, utcOffsetHours: -8))
+        let winterUV = BaselineEstimator.estimateUVIndex(location: seattle, date: makeNoonDate(month: 12, day: 21, utcOffsetHours: -8))
         XCTAssertGreaterThan(summerUV, winterUV * 5.0,
             "Seattle's noon UV should swing dramatically between summer (\(summerUV)) and winter (\(winterUV))")
+    }
+
+    // MARK: - Morning UV curve shape
+
+    func testTropicalEarlyMorningUVIsLow() {
+        // Regression: Cabo at 7:30 AM in early April. The old model computed
+        // sin^2.5 attenuation only at the noon elevation and then scaled it
+        // with a gentle cos(t) for time of day, giving ~4.5. The actual sun
+        // is only ~19° above the horizon at this hour; applying sin^2.5 to
+        // *that* elevation gives < 1. Real-world reports were ~2.
+        let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
+                                latitude: 22.89, longitude: -109.92)
+        let morning = makeDate(month: 4, day: 8, hour: 7, minute: 30, utcOffsetHours: -7)
+        let uvi = BaselineEstimator.estimateUVIndex(location: cabo, date: morning)
+        XCTAssertLessThan(uvi, 2.0,
+            "Cabo at 7:30 AM in April should be well below the vitamin D " +
+            "threshold; old model said \(4.5), got \(uvi)")
+        XCTAssertGreaterThan(uvi, 0.0, "Sun is up at 7:30 AM in Cabo")
+    }
+
+    func testMidMorningRampsSteeplyTowardNoon() {
+        // The point of instantaneous elevation: the curve is concave-up in
+        // the morning. UV at 10 AM should be much closer to the noon value
+        // than to the 8 AM value.
+        let cabo = HomeLocation(cityName: "Cabo San Lucas", country: "Mexico",
+                                latitude: 22.89, longitude: -109.92)
+        let uv8  = BaselineEstimator.estimateUVIndex(location: cabo, date: makeDate(month: 4, day: 8, hour: 8,  minute: 0, utcOffsetHours: -7))
+        let uv10 = BaselineEstimator.estimateUVIndex(location: cabo, date: makeDate(month: 4, day: 8, hour: 10, minute: 0, utcOffsetHours: -7))
+        let uv12 = BaselineEstimator.estimateUVIndex(location: cabo, date: makeDate(month: 4, day: 8, hour: 12, minute: 0, utcOffsetHours: -7))
+
+        XCTAssertGreaterThan(uv10 - uv8, uv12 - uv10,
+            "UV ramp from 8→10 should be steeper than 10→12 (concave); " +
+            "got 8AM=\(uv8), 10AM=\(uv10), 12PM=\(uv12)")
     }
 
     // MARK: - Daylight Duration
@@ -227,7 +263,7 @@ final class BaselineEstimatorTests: XCTestCase {
         // Seattle in June: sunset is ~9 PM, so 7 PM should still have UV
         let seattle = HomeLocation(cityName: "Seattle", country: "US",
                                    latitude: 47.6, longitude: -122.3)
-        let eveningSummer = makeDate(month: 6, day: 21, hour: 19, minute: 0)
+        let eveningSummer = makeDate(month: 6, day: 21, hour: 19, minute: 0, utcOffsetHours: -8)
         let uvi = BaselineEstimator.estimateUVIndex(location: seattle, date: eveningSummer)
         XCTAssertGreaterThan(uvi, 0.0,
             "Seattle at 7 PM in June should still have some UV")
@@ -237,7 +273,7 @@ final class BaselineEstimatorTests: XCTestCase {
         // Seattle in December: sunset is ~4:20 PM, so 7 PM should be zero
         let seattle = HomeLocation(cityName: "Seattle", country: "US",
                                    latitude: 47.6, longitude: -122.3)
-        let eveningWinter = makeDate(month: 12, day: 21, hour: 19, minute: 0)
+        let eveningWinter = makeDate(month: 12, day: 21, hour: 19, minute: 0, utcOffsetHours: -8)
         let uvi = BaselineEstimator.estimateUVIndex(location: seattle, date: eveningWinter)
         XCTAssertEqual(uvi, 0.0, accuracy: 0.001,
             "Seattle at 7 PM in December should have zero UV")
@@ -290,15 +326,26 @@ final class BaselineEstimatorTests: XCTestCase {
         XCTAssertGreaterThan(typeIV, dietFloor,
             "Diet floor must remain even when the sun portion is heavily attenuated")
     }
+
     // MARK: - Helpers
 
-    private func makeDate(month: Int, day: Int, hour: Int, minute: Int) -> Date {
+    /// Builds a `Date` at a fixed UTC offset so the resulting *instant* is
+    /// independent of the test machine's locale. The estimator now reads
+    /// dates in UTC and derives the solar hour angle from longitude, so
+    /// "noon" must mean "noon at a clock matching the test location's
+    /// longitude" — pick `utcOffsetHours ≈ round(longitude / 15)`.
+    ///
+    /// (Before this change, tests passed only by coincidence when the dev
+    /// machine happened to be in a US timezone.)
+    private func makeDate(month: Int, day: Int, hour: Int, minute: Int,
+                          utcOffsetHours: Int) -> Date {
         var components = DateComponents()
         components.year = 2025
         components.month = month
         components.day = day
         components.hour = hour
         components.minute = minute
+        components.timeZone = TimeZone(secondsFromGMT: utcOffsetHours * 3600)
         return Calendar(identifier: .gregorian).date(from: components)!
     }
 
@@ -320,13 +367,8 @@ final class BaselineEstimatorTests: XCTestCase {
         return Calendar(identifier: .gregorian).date(from: components)!
     }
 
-    private func makeNoonDate(month: Int, day: Int) -> Date {
-        var components = DateComponents()
-        components.year = 2025
-        components.month = month
-        components.day = day
-        components.hour = 12
-        components.minute = 0
-        return Calendar(identifier: .gregorian).date(from: components)!
+    private func makeNoonDate(month: Int, day: Int, utcOffsetHours: Int) -> Date {
+        makeDate(month: month, day: day, hour: 12, minute: 0,
+                 utcOffsetHours: utcOffsetHours)
     }
 }
