@@ -60,6 +60,22 @@ For deliberately logged sessions: `UV index × skin fraction × cloud attenuatio
 > [Holick 2004, *Am J Clin Nutr*](https://pubmed.ncbi.nlm.nih.gov/14985208/) — previtamin D₃ photodegradation plateau  
 > [WHO Global Solar UV Index, 2002](https://www.who.int/publications/i/item/9241590076) — UV index scale, cloud transmission, SED definitions
 
+#### Where the UV index comes from
+
+**WeatherKit when available, astronomy when not.** The app asks Apple's WeatherKit for the live `currentWeather.uvIndex` (cached 15 min per ~1 km cell to stay well under the 500k/month free tier). If that fails — offline, no entitlement, service hiccup — it falls through to a self-contained clear-sky model that needs nothing but the clock and your coordinates:
+
+```
+sin(elevation) = sin(lat)·sin(δ) + cos(lat)·cos(δ)·cos(hourAngle)
+UVI            = 12 · sin(elevation)^2.5     (0 if sun below horizon)
+```
+
+where `δ` is the solar declination for the day of year and `hourAngle = 15°·(UTC_hour − 12) + longitude`. Reading the clock in UTC and folding longitude into the hour angle makes the result independent of the device's timezone — `Date()` is just an instant.
+
+The `^2.5` exponent is the empirical bit: it approximates how much extra ozone column UV-B has to punch through at low sun angles. Earlier versions of this app applied that exponent only to the *noon* elevation and then scaled by a gentle `cos(t)` for time of day; that curve is far too generous in the morning (it put Cabo San Lucas at UV ~5 at 7:30 AM when the real number was ~1). Applying the power law to the *instantaneous* elevation fixes the shape — see `testTropicalEarlyMorningUVIsLow` for the regression.
+
+> [Madronich 1993, *Environmental UV Photobiology*](https://link.springer.com/chapter/10.1007/978-1-4899-2406-3_1) — air-mass dependence of erythemal irradiance; basis for the `sin^p` power-law approximation  
+> [NOAA Solar Calculator](https://gml.noaa.gov/grad/solcalc/) — reference for the solar position equations
+
 ### 5. Lab results override everything
 
 A blood test becomes a trusted anchor: the model resets to that value on the test date and replays steps 1–4 forward to today.
@@ -75,7 +91,7 @@ vitamin-d-tracker/
 │   ├── Views/                      # Onboarding, Dashboard, Sun Session, Settings
 │   ├── ViewModels/                 # MVVM ObservableObject view models
 │   └── ...
-├── Tests/                          # 140+ unit tests
+├── Tests/                          # 101+ unit tests
 ├── MODELING.md                     # Scientific model documentation
 └── README.md
 ```
@@ -121,6 +137,8 @@ vitamin-d-tracker/
 
 4. **Build and run** with `⌘R`.
 
+5. **(Optional) Enable WeatherKit** for live UV index readings. In the Apple Developer portal, enable the **WeatherKit** capability for your App ID, then add the `com.apple.developer.weatherkit` entitlement to the app target in Xcode (Signing & Capabilities → + Capability → WeatherKit). Without this the app silently falls back to the offline clear-sky model — fully functional, just blind to today's actual cloud cover.
+
 ### Running Tests
 
 Run the full test suite from the command line:
@@ -161,6 +179,7 @@ To add remote analytics (e.g., TelemetryDeck, PostHog, or similar privacy-consci
 ## Known Limitations
 
 - **Scientific uncertainty** — The estimation model uses simplified first-order kinetics and population-average constants. Individual vitamin D metabolism varies significantly based on genetics, body composition, diet, and other factors not captured here.
+- **Clear-sky UV fallback** — When WeatherKit is unavailable (offline, or the entitlement isn't configured), UV index comes from an astronomical model that's correct for sun *position* but blind to cloud cover, ozone anomalies, aerosols, and altitude. A clear-sky model in Seattle in June will say UV 8 while it's drizzling.
 - **iOS background scheduling** — True midnight-exact background execution is not guaranteed by iOS. The app uses `BGAppRefreshTask` as the best available approximation and replays missed updates on next launch.
 - **Analytics gaps** — Exact download counts are only available via App Store Connect, not within the app itself. In-app analytics are lightweight and privacy-conscious.
 - **Not medical advice** — This app is for personal wellness estimation only. It should never be used as a substitute for professional medical care, vitamin D testing, or supplementation guidance from a qualified healthcare provider.

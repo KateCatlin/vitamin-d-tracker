@@ -33,6 +33,11 @@ class SunSessionViewModel: ObservableObject {
     /// The current estimated UV index for the user's location, updated on view appear.
     @Published var currentLocationUVIndex: Double = 0.0
 
+    /// Where ``currentLocationUVIndex`` came from. WeatherKit when the
+    /// network and entitlement cooperate; clear-sky model otherwise.
+    /// Surfaced so the UI can label the value as "live" vs "estimate".
+    @Published var uvIndexSource: UVIndexSource = .clearSkyModel
+
     /// Whether the current UV index is high enough for meaningful vitamin D production.
     var isUVSufficientForSession: Bool {
         currentLocationUVIndex >= ModelingAssumptions.minimumUVIndexForVitaminD
@@ -43,14 +48,39 @@ class SunSessionViewModel: ObservableObject {
         String(format: "%.1f", currentLocationUVIndex)
     }
 
-    /// Refreshes the estimated UV index for the user's current location.
+    /// Refreshes the UV index for the user's current location.
+    ///
+    /// The clear-sky value is published synchronously so the screen
+    /// never sits at 0 while waiting for the network. Then WeatherKit
+    /// is consulted; if it answers, the published value is overwritten
+    /// with the live reading. If it doesn't (offline, no entitlement,
+    /// service hiccup), the clear-sky value just stays — no error UI.
     func refreshUVEstimate() {
-        let location = sessionLocation ?? persistence.userProfile.homeLocation ?? HomeLocation(
+        let location = resolveSessionLocation()
+
+        // Synchronous floor: the (now-correct) astronomical model.
+        currentLocationUVIndex = BaselineEstimator.estimateUVIndex(location: location)
+        uvIndexSource = .clearSkyModel
+
+        // Best-effort upgrade. Provider returns the same clear-sky
+        // number if WeatherKit fails, so the assignment is harmless
+        // either way; we just keep the source label honest.
+        Task { [weak self] in
+            let reading = await UVIndexProvider.shared.currentUVIndex(for: location)
+            guard let self else { return }
+            self.currentLocationUVIndex = reading.value
+            self.uvIndexSource = reading.source
+        }
+    }
+
+    /// Resolves the location to use for UV lookups: the user-picked
+    /// session override, then their home city, then SF as a placeholder.
+    private func resolveSessionLocation() -> HomeLocation {
+        sessionLocation ?? persistence.userProfile.homeLocation ?? HomeLocation(
             cityName: "Unknown",
             latitude: 37.7749,
             longitude: -122.4194
         )
-        currentLocationUVIndex = BaselineEstimator.estimateUVIndex(location: location)
     }
 
     // MARK: - Timer
@@ -139,13 +169,17 @@ class SunSessionViewModel: ObservableObject {
     // MARK: - Actions
 
     func startSession() {
-        let location = sessionLocation ?? persistence.userProfile.homeLocation ?? HomeLocation(
-            cityName: "Unknown",
-            latitude: 37.7749,
-            longitude: -122.4194
-        )
+        let location = resolveSessionLocation()
 
-        estimatedUVIndex = BaselineEstimator.estimateUVIndex(location: location)
+        // Reuse the already-resolved value from `refreshUVEstimate()`.
+        // The Start button isn't reachable without `.onAppear` having
+        // run, so this is the WeatherKit number when WeatherKit
+        // worked, and the clear-sky number when it didn't. Falling
+        // through to the estimator handles the edge where a session
+        // is started programmatically without the screen mounted.
+        estimatedUVIndex = currentLocationUVIndex > 0
+            ? currentLocationUVIndex
+            : BaselineEstimator.estimateUVIndex(location: location)
 
         let session = SunExposureSession(
             location: location,

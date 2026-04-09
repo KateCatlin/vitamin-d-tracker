@@ -96,63 +96,71 @@ public struct BaselineEstimator {
         return seasonalAmplitude * cos(phase) * latitudeScale
     }
 
-    /// Estimate UV index for a location and date/time.
-    /// This is a rough model based on latitude, day of year, and time of day.
-    /// Daylight duration is computed from solar declination and latitude,
-    /// so sunrise/sunset times vary correctly by season and location.
-    /// In a production app, this would be supplemented by weather API data.
+    /// Estimate clear-sky UV index for a location at a specific instant.
+    ///
+    /// This is a self-contained astronomical model — no network, no weather
+    /// data. It computes the sun's *instantaneous* elevation from latitude,
+    /// longitude, day of year, and UTC time, then applies an empirical
+    /// `sin(elevation)^2.5` power law for atmospheric attenuation (UV-B at
+    /// low sun angles passes through a much longer slant column of ozone).
+    ///
+    /// Because the date is read in UTC and longitude is folded directly into
+    /// the hour angle, the result is independent of the device's local
+    /// timezone. `Date()` is just a point in time; this function never asks
+    /// what wall clock the user is looking at.
+    ///
+    /// Known approximations:
+    /// - Ignores the equation of time (~±15 min, varies through the year).
+    /// - Day of year is read in UTC; near solar midnight it can be off by
+    ///   one, but declination changes < 0.4°/day so the effect is negligible.
+    /// - Clear-sky only. Real UV is lower under cloud, higher at altitude
+    ///   and over snow. Use ``UVIndexProvider`` in the app target for
+    ///   WeatherKit-backed values when network is available.
     ///
     /// - Parameters:
-    ///   - location: Geographic location.
-    ///   - date: Date and time.
-    /// - Returns: Estimated UV index.
+    ///   - location: Geographic location (latitude *and* longitude both used).
+    ///   - date: The instant to evaluate. Defaults to now.
+    /// - Returns: Estimated clear-sky UV index, 0 if the sun is below the horizon.
     public static func estimateUVIndex(
         location: HomeLocation,
         date: Date = Date()
     ) -> Double {
-        let calendar = Calendar(identifier: .gregorian)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+
         let dayOfYear = Double(calendar.ordinality(of: .day, in: .year, for: date) ?? 1)
         let hour = Double(calendar.component(.hour, from: date))
         let minute = Double(calendar.component(.minute, from: date))
-        let hourDecimal = hour + minute / 60.0
+        let utcHour = hour + minute / 60.0
 
-        // Solar noon approximation (simplified — doesn't account for timezone/longitude)
-        let solarNoon = 12.0
+        let declRad = solarDeclinationDegrees(dayOfYear: dayOfYear) * .pi / 180.0
+        let latRad = location.latitude * .pi / 180.0
 
-        // Calculate half-day length from solar declination and latitude
-        let halfDayHours = daylightHalfLength(latitude: location.latitude, dayOfYear: dayOfYear)
+        // Hour angle of the sun: 0 at local solar noon, ±180° at solar
+        // midnight, 15° per hour. Solar noon at longitude L (degrees, east
+        // positive) occurs at 12 − L/15 UTC, so:
+        //   hourAngle = 15° × (utcHour − (12 − L/15))
+        //             = 15° × (utcHour − 12) + L
+        let hourAngleDeg = 15.0 * (utcHour - 12.0) + location.longitude
+        let hourAngleRad = hourAngleDeg * .pi / 180.0
 
-        // Time-of-day factor: peak at solar noon, zero at sunrise/sunset
-        // Use a cosine scaled so it equals 1 at noon and 0 at sunrise/sunset
-        let hoursFromNoon = abs(hourDecimal - solarNoon)
-        let timeFactor: Double
-        if halfDayHours <= 0 || hoursFromNoon >= halfDayHours {
-            timeFactor = 0.0
-        } else {
-            let hourAngle = (Double.pi / 2.0) * hoursFromNoon / halfDayHours
-            timeFactor = cos(hourAngle)
-        }
+        // Instantaneous solar elevation. This is the standard altitude
+        // formula — it folds latitude, season (via declination), and time
+        // of day (via hour angle) into one number. There is no separate
+        // "noon factor × time factor": that decomposition is what caused
+        // the over-generous morning estimates (Cabo at 7:30 AM read ~5,
+        // reality ~1–2) because a plain cosine on time doesn't fall off
+        // nearly as steeply as the real atmosphere does at low sun.
+        let sinElev = sin(latRad) * sin(declRad)
+                    + cos(latRad) * cos(declRad) * cos(hourAngleRad)
 
-        // Noon UV intensity from solar elevation.
-        //
-        // Latitude and season are NOT independent — they couple through solar
-        // elevation: noonElevation = 90° − |latitude − declination|. Modeling
-        // them as separate multiplicative factors over-attenuates the tropics
-        // away from the summer solstice (e.g. it would put Cabo near UV 0 in
-        // December, when reality is UV ~6–7 at noon).
-        //
-        // The sin^2.5 exponent approximates atmospheric attenuation: at lower
-        // sun angles, UV-B passes through more atmosphere and ozone.
-        let declinationDeg = solarDeclinationDegrees(dayOfYear: dayOfYear)
-        let noonElevationDeg = 90.0 - abs(location.latitude - declinationDeg)
-        guard noonElevationDeg > 0 else { return 0.0 }   // polar night
-        let noonElevationRad = noonElevationDeg * Double.pi / 180.0
-        let elevationFactor = pow(sin(noonElevationRad), 2.5)
+        guard sinElev > 0 else { return 0.0 }   // sun below horizon
 
-        // Peak UV index when the sun is directly overhead at noon: ~12
+        // Peak UV index when the sun is directly overhead: ~12 (clear sky,
+        // sea level, typical ozone column). The 2.5 exponent approximates
+        // the optical-air-mass effect on erythemal irradiance.
         let peakUVI = 12.0
-
-        return peakUVI * elevationFactor * timeFactor
+        return peakUVI * pow(sinElev, 2.5)
     }
 
     /// Solar declination angle in degrees for a given day of the year.
@@ -163,6 +171,10 @@ public struct BaselineEstimator {
 
     /// Computes the number of hours from solar noon to sunset (half the daylight period).
     /// Uses the standard astronomical day-length formula based on solar declination and latitude.
+    ///
+    /// No longer used by ``estimateUVIndex(location:date:)`` (which now
+    /// computes instantaneous elevation directly), but kept for callers that
+    /// need sunrise/sunset times rather than UV intensity.
     ///
     /// Returns 0 for polar night, 12 for polar day (midnight sun).
     static func daylightHalfLength(latitude: Double, dayOfYear: Double) -> Double {

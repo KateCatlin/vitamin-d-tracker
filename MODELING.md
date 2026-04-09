@@ -243,7 +243,6 @@ effective_production = base_production × skin_type_multiplier
 **Sources:**
 - Fitzpatrick TB. The validity and practicality of sun-reactive skin types I through VI. *Arch Dermatol.* 1988;124(6):869-871.
 - Clemens TL, et al. Increased skin pigment reduces the capacity of skin to synthesise vitamin D3. *Lancet.* 1982;1(8263):74-76.
-- Holick MF. Vitamin D deficiency. *N Engl J Med.* 2007;357(3):266-281.
 
 ### 6.4 Cloud Cover Effect
 
@@ -357,13 +356,75 @@ True midnight execution cannot be guaranteed on iOS. The app uses `BGAppRefreshT
 
 ## 9. UV Index Estimation
 
-When no weather API data is available, the app estimates UV index from:
+The UV index that feeds §6 (sun exposure) and §7 (sunburn risk) is resolved by `UVIndexProvider` in the app target, which prefers a live source and degrades gracefully:
 
-- **Latitude**: Lower latitudes → higher UV
-- **Season**: Summer → higher UV
-- **Time of day**: Peak at solar noon, zero at night
+| Priority | Source | What it accounts for |
+|---|---|---|
+| 1 | WeatherKit `currentWeather.uvIndex` | Sun position, cloud, ozone column, aerosols, altitude — everything |
+| 2 | Cached WeatherKit value (< 15 min old, ~1 km cell) | Same, slightly stale |
+| 3 | `BaselineEstimator.estimateUVIndex` | Sun position only — clear-sky |
 
-This is a simplified model. In production, integrating a weather/UV API (e.g., OpenWeatherMap UV Index) would significantly improve accuracy.
+WeatherKit was chosen over third-party APIs because the SDK is native Swift, the 500k call/month tier is included with the paid Apple Developer Program (no API key to ship or proxy), and Apple handles the privacy disclosure. The app stays fully functional without it; the UI exposes `uvIndexSource` so the displayed value can be labelled "live" vs "estimate".
+
+### 9.1 Clear-sky fallback model
+
+The fallback computes the sun's instantaneous elevation from first principles — no network, no lookup tables, no device-timezone dependence.
+
+**Solar declination** (Cooper's equation) — the latitude where the sun is directly overhead today, ranging ±23.45° across the year:
+
+```
+δ = 23.45° · sin(2π · (284 + dayOfYear) / 365)
+```
+
+**Hour angle** — how far the Earth has rotated since local solar noon, 15° per hour. The clock is read in UTC and longitude is folded in directly, so `Date()` is treated purely as an instant:
+
+```
+H = 15° · (utcHour − 12) + longitude
+```
+
+This is why solar noon in Cabo San Lucas (longitude −109.9°, ~5° west of the MST standard meridian) lands at ~12:20 PM on the wall clock rather than 12:00. The previous implementation hardcoded `solarNoon = 12.0` and missed this.
+
+**Solar elevation** — the standard altitude formula, combining all three inputs:
+
+```
+sin(α) = sin(lat)·sin(δ) + cos(lat)·cos(δ)·cos(H)
+```
+
+**UV index** — empirical power law on the elevation:
+
+```
+UVI = 12 · sin(α)^2.5     (clamped to 0 when α ≤ 0)
+```
+
+`12` is the assumed peak when the sun is at zenith on a clear day at sea level with a typical ozone column. The `2.5` exponent approximates the slant-path optical air mass: at low sun angles, UV-B traverses far more atmosphere and ozone, and erythemal irradiance falls off much faster than `cos(zenith)` alone would predict. Madronich (1993) and the radiative-transfer literature support exponents in the 2.3–2.6 range for clear-sky erythemal UV.
+
+### 9.2 Why the power law must apply to the *instantaneous* elevation
+
+An earlier version of this model decomposed the calculation into `(noon-peak intensity) × (time-of-day factor)`:
+
+```
+UVI_old = 12 · sin(α_noon)^2.5 · cos((π/2)·hoursFromNoon/halfDayLength)     # WRONG
+```
+
+This gives correct answers at solar noon (where it was tested) but the daily curve has the wrong shape. The plain cosine on the time axis falls off far more gently than the real atmosphere.
+
+Worked example — Cabo San Lucas (22.89° N), April 8, 7:30 AM MST:
+
+| | Old model | New model | Reported |
+|---|---|---|---|
+| Sun elevation used | 73.9° (noon) | 18.7° (now) | — |
+| `sin(elev)^2.5` | 0.90 | 0.057 | — |
+| Time scaling | × cos(1.14) ≈ 0.41 | none (folded into elev) | — |
+| **UV index** | **4.5** | **0.7** | **~1–2** |
+
+The old model's morning shoulder was steep enough to cross the UV ≥ 3 vitamin-D threshold around 7:15 AM; the corrected model crosses it around 9 AM, which matches both the new shape and published Cabo forecasts. The regression test `testTropicalEarlyMorningUVIsLow` pins this.
+
+### 9.3 Known approximations
+
+- **Equation of time ignored.** Real solar noon drifts ±15 minutes through the year due to Earth's orbital eccentricity and axial tilt. Worst case in early November: ~16 minutes early. Effect on UV: a few percent at midday, larger near sunrise/sunset.
+- **Day-of-year read in UTC.** Near local solar midnight this can be off by one calendar day, but declination changes < 0.4°/day so the error is negligible.
+- **Constant zenith UVI of 12.** Real values range ~10–14 at sea level depending on ozone column and aerosols, and increase ~6% per km of altitude. The model has no altitude input.
+- **No refraction.** The model puts the horizon at geometric `α = 0`. Atmospheric refraction lifts the visible sun ~0.6° at the horizon — irrelevant for UV, which is essentially zero at those angles anyway.
 
 ---
 
@@ -377,7 +438,7 @@ This is a simplified model. In production, integrating a weather/UV API (e.g., O
 ### Known sources of uncertainty:
 - Individual variation in vitamin D metabolism (body weight, age, skin pigmentation, genetics)
 - Simplified single-compartment pharmacokinetic model
-- UV index estimation without real weather data
+- Clear-sky UV fallback is blind to cloud, ozone anomalies, aerosols, and altitude (only relevant when WeatherKit is unavailable)
 - Background input is a population-level estimate of incidental sun (indoor workers, shift workers, and people who avoid the sun will be overestimated)
 - No accounting for medications that affect vitamin D metabolism
 - Fitzpatrick skin type multipliers are approximate population-level estimates
@@ -408,3 +469,5 @@ This is a simplified model. In production, integrating a weather/UV API (e.g., O
 12. NIH Office of Dietary Supplements. Vitamin D Fact Sheet for Health Professionals. https://ods.od.nih.gov/factsheets/VitaminD-HealthProfessional/
 13. Fitzpatrick TB. The validity and practicality of sun-reactive skin types I through VI. *Arch Dermatol.* 1988;124(6):869-871.
 14. Clemens TL, et al. Increased skin pigment reduces the capacity of skin to synthesise vitamin D3. *Lancet.* 1982;1(8263):74-76.
+15. Madronich S. The atmosphere and UV-B radiation at ground level. In: *Environmental UV Photobiology.* Springer, 1993. pp. 1–39.
+16. Cooper PI. The absorption of radiation in solar stills. *Solar Energy.* 1969;12(3):333-346. (Solar declination approximation.)
