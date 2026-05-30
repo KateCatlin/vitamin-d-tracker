@@ -178,7 +178,25 @@ To add remote analytics (e.g., TelemetryDeck, PostHog, or similar privacy-consci
 
 ## Known Limitations
 
-- **Scientific uncertainty** — The estimation model uses simplified first-order kinetics and population-average constants. Individual vitamin D metabolism varies significantly based on genetics, body composition, diet, and other factors not captured here.
+### Modeling assumptions that affect accuracy
+
+The estimate is built from population-average science and a number of deliberate simplifications. None of these make the app unusable, but each is a place where your real level may diverge from the number shown. They are listed roughly in order of how much they could shift an individual's estimate, and we'd rather be upfront about them than imply more precision than the model has.
+
+1. **The starting baseline is a population estimate.** Without a lab result, your anchor is a population average adjusted for city, season, and skin type. Real individual levels vary widely around that average, so the starting point alone can be off by a large margin until you enter a blood test.
+2. **Supplement response is treated as linear.** The model adds about 10 ng/mL per 1,000 IU/day regardless of your current level or body weight. In reality the response is larger when you are deficient and smaller when you are already replete or have a higher BMI.
+3. **Sun production relies on average conversion constants.** Turning UV exposure into a vitamin D figure multiplies several population-average constants together, so the absolute amount credited for a sun session is one of the rougher numbers in the app.
+4. **UV is held constant during a logged sun session.** A session uses the UV index sampled when it starts and applies it for the whole duration. Long sessions, or sessions in the early morning or late afternoon when the sun's angle is changing quickly, may be over- or under-credited.
+5. **A single 21-day half-life is used for everyone.** The published range is 15-25 days and varies between individuals, which affects how quickly levels fall and how fast supplements take effect.
+6. **The "background" diet-and-incidental-sun term is a modeling construct.** It is tuned so an untracked person settles at their estimated baseline rather than decaying toward zero. It is internally consistent but inherits whatever error is in the baseline estimate (#1).
+7. **Incidental sun may be counted twice.** The baseline already assumes some everyday sun. Someone in a sunny climate who also logs many sessions could have a little of that exposure double-counted.
+8. **Cloud cover and exposed-skin fraction are rough inputs.** Both are simple, user-estimated factors applied linearly, so casual estimates flow straight into the result.
+9. **No upper limit is applied.** Levels cannot go below zero, but there is no saturation ceiling, so an extreme combination of high dose plus heavy sun could produce an unrealistically high number.
+10. **D2 is modeled only as weaker D3.** It is credited at 50% potency but uses the same decay as D3, even though D2 actually clears from the body differently.
+11. **Lab results are treated as exact.** A blood test resets the estimate to its measured value without accounting for the normal variation between labs and assay methods (commonly around 10-15%).
+12. **Seasonal changes lag reality slightly.** Because the level is pulled toward each day's baseline through a multi-week half-life, the modeled seasonal high and low can trail the actual change in sunlight by a few weeks.
+
+### Operational limitations
+
 - **Clear-sky UV fallback** — When WeatherKit is unavailable (offline, or the entitlement isn't configured), UV index comes from an astronomical model that's correct for sun *position* but blind to cloud cover, ozone anomalies, aerosols, and altitude. A clear-sky model in Seattle in June will say UV 8 while it's drizzling.
 - **iOS background scheduling** — True midnight-exact background execution is not guaranteed by iOS. The app uses `BGAppRefreshTask` as the best available approximation and replays missed updates on next launch.
 - **Analytics gaps** — Exact download counts are only available via App Store Connect, not within the app itself. In-app analytics are lightweight and privacy-conscious.
