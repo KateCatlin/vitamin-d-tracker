@@ -66,10 +66,12 @@ Clamped to [-12, +8] ng/mL
 
 | Latitude | Adjustment |
 |----------|-----------|
-| 0° (equator) | +10 ng/mL |
+| 0° (equator) | +8 ng/mL (raw +9.99, capped by the +8 clamp) |
 | 30° | 0 ng/mL |
 | 45° | -5 ng/mL |
 | 60° | -10 ng/mL |
+
+Note: the raw formula yields +9.99 ng/mL at the equator, but the `[-12, +8]` clamp caps the applied value at +8 ng/mL.
 
 **Sources:**
 - Kimlin MG. Geographic location and vitamin D synthesis. *Mol Aspects Med.* 2008;29(6):453-461.
