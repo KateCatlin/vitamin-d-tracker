@@ -19,6 +19,14 @@ struct SunSessionView: View {
                     } else {
                         LowUVContent(viewModel: viewModel)
                     }
+
+                    // Apple requires visible attribution wherever
+                    // WeatherKit data is shown. Only displayed when the
+                    // UV index actually came from WeatherKit (not the
+                    // offline clear-sky fallback).
+                    if viewModel.uvIndexSource == .weatherKit {
+                        WeatherAttributionFooter()
+                    }
                 }
                 .padding(.vertical, 16)
             }
@@ -375,6 +383,36 @@ struct SessionCompleteContent: View {
 
             Spacer(minLength: 20)
         }
+    }
+}
+
+// MARK: - Weather Attribution
+
+/// Apple Weather attribution required by the WeatherKit terms whenever
+/// WeatherKit data is displayed. Shows the Apple Weather name and a
+/// link to the data-source legal attribution page.
+struct WeatherAttributionFooter: View {
+    private let attributionURL = URL(
+        string: "https://weatherkit.apple.com/legal-attribution.html"
+    )!
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 11))
+                Text("Weather")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+            }
+            .foregroundColor(.textSecondary)
+
+            Link("Other data sources", destination: attributionURL)
+                .font(.system(size: 11, design: .rounded))
+                .foregroundColor(.skyBlue)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
     }
 }
 

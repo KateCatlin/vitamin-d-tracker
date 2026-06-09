@@ -350,9 +350,9 @@ Each day at midnight (Pacific Time, approximated), the model:
 
 If the app has not run daily updates (e.g., the user hasn't opened the app for 5 days), it replays all missed days upon next open. This ensures the estimate is always current.
 
-### 8.2 iOS Background Execution Limitations
+### 8.2 iOS Background Execution
 
-True midnight execution cannot be guaranteed on iOS. The app uses `BGAppRefreshTask` for best-effort background processing. The catch-up mechanism ensures correctness regardless of timing.
+The estimate is brought current entirely through the **catch-up on app open** mechanism described in §8.1 — when the app launches it replays every missed day from the last anchor, so the displayed level is always correct as of the moment you open the app. The app does **not** register an `BGAppRefreshTask`; no background execution is required for correctness, and the app requests no background-mode entitlements.
 
 ---
 
