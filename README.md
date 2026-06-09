@@ -137,7 +137,7 @@ vitamin-d-tracker/
 
 4. **Build and run** with `⌘R`.
 
-5. **(Optional) Enable WeatherKit** for live UV index readings. In the Apple Developer portal, enable the **WeatherKit** capability for your App ID, then add the `com.apple.developer.weatherkit` entitlement to the app target in Xcode (Signing & Capabilities → + Capability → WeatherKit). Without this the app silently falls back to the offline clear-sky model — fully functional, just blind to today's actual cloud cover.
+5. **(Optional) Enable WeatherKit** for live UV index readings. The app **already ships with the `com.apple.developer.weatherkit` entitlement** (`VitaminDTracker/VitaminDTracker.entitlements`), so no Xcode capability changes are needed. To make live UV actually resolve you must, in the [Apple Developer portal](https://developer.apple.com/account/resources/identifiers/list), enable the **WeatherKit** service for the App ID `com.katecatlin.VitaminDTracker`, then let Xcode regenerate a provisioning profile that includes WeatherKit (automatic signing does this once the service is enabled — allow a few minutes for it to propagate). Without a profile that grants the entitlement, every WeatherKit request fails auth and the app silently falls back to the offline clear-sky model — fully functional, just blind to today's actual cloud cover.
 
 ### Running Tests
 
@@ -152,18 +152,21 @@ Or use `⌘U` in Xcode. The suite includes 140+ tests covering decay half-life c
 ## Background Daily Updates
 
 ### Intended Behavior
-The estimated vitamin D level updates at midnight each day, applying:
+The estimated vitamin D level advances one day at a time, applying:
 - Daily metabolic decay
 - Background input (diet + incidental sun, season-aware)
 - Daily supplement contribution
 
 ### iOS Implementation
-iOS strictly limits background execution. The app uses:
-- `BGAppRefreshTask` for best-effort scheduled background processing
-- **Catch-up on app open**: When the app is launched, it computes all missed daily updates since the last known state
+iOS strictly limits background execution, so the app does **not** rely on it.
+Instead, it uses **catch-up on app open**: when the app is launched, it computes
+all missed daily updates since the last known state. The app registers no
+background tasks and requests no background-mode entitlements.
 
 ### Correctness Guarantee
-Regardless of whether background tasks fire on time, the estimate is always correct when the app is opened. The catch-up mechanism replays all missing days from the last known anchor.
+The estimate is always correct as of the moment the app is opened. The catch-up
+mechanism replays all missing days from the last known anchor, so no background
+scheduling is needed.
 
 ## Analytics
 
@@ -198,7 +201,7 @@ The estimate is built from population-average science and a number of deliberate
 ### Operational limitations
 
 - **Clear-sky UV fallback** — When WeatherKit is unavailable (offline, or the entitlement isn't configured), UV index comes from an astronomical model that's correct for sun *position* but blind to cloud cover, ozone anomalies, aerosols, and altitude. A clear-sky model in Seattle in June will say UV 8 while it's drizzling.
-- **iOS background scheduling** — True midnight-exact background execution is not guaranteed by iOS. The app uses `BGAppRefreshTask` as the best available approximation and replays missed updates on next launch.
+- **iOS background scheduling** — The app performs no background execution. Daily updates are replayed on next launch (catch-up on app open), which keeps the estimate correct without requiring background tasks.
 - **Analytics gaps** — Exact download counts are only available via App Store Connect, not within the app itself. In-app analytics are lightweight and privacy-conscious.
 - **Not medical advice** — This app is for personal wellness estimation only. It should never be used as a substitute for professional medical care, vitamin D testing, or supplementation guidance from a qualified healthcare provider.
 

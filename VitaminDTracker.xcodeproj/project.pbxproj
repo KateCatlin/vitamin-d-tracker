@@ -27,13 +27,16 @@
 		8B21A9D0329A2BBFCAEABAC4 /* SupplementInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6602E6BE781BE7B01B469232 /* SupplementInputView.swift */; };
 		8D30E3EBEBDA10ED64151F63 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4851ED0C64D0C20135F1064 /* ContentView.swift */; };
 		A3507E0781838B25F14046BD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22F19B1C37FD55985A5904E2 /* DesignSystem.swift */; };
+		B5B2C191588C4A76989D4783 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 137E4EAB8E6443B86CAC6BD9 /* PrivacyInfo.xcprivacy */; };
 		D7AE0FCC46103B7B31D1CAF6 /* VitaminDTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A6146A6C909A74E1B599066 /* VitaminDTrackerApp.swift */; };
 		DF4928EDDE471CC74FC7E12B /* DisclaimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA0896A95870BC8DEE0F5D7 /* DisclaimerView.swift */; };
+		F0BD2DDCA082864DB402EC13 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7210A18319DE42FAF6493DD /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		01EE6D3074D944073B5612D8 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
 		0EA136B160B94FB1DDCEEB4E /* KeychainStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStorage.swift; sourceTree = "<group>"; };
+		137E4EAB8E6443B86CAC6BD9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		22F19B1C37FD55985A5904E2 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		2526CA408843E04493ABF2CF /* SkinTypeSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinTypeSelectionView.swift; sourceTree = "<group>"; };
 		33C28C0836FA6F3F3AD28B36 /* SunSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSessionView.swift; sourceTree = "<group>"; };
@@ -48,7 +51,9 @@
 		743DAE5A185D46A8A45F1043 /* TestResultInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestResultInputView.swift; sourceTree = "<group>"; };
 		79CFCEC13B4BE4E19441E990 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		7D0145E8F9D8CD4E28DA71EF /* CitySelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitySelectionView.swift; sourceTree = "<group>"; };
+		B7210A18319DE42FAF6493DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C4732EE8B23F9BA0579BB9FE /* VitaminDTracker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = VitaminDTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C81C682A9561D689F333EF2B /* VitaminDTracker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VitaminDTracker.entitlements; sourceTree = "<group>"; };
 		D672EDC24C6B4142258D72AB /* SunSessionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSessionViewModel.swift; sourceTree = "<group>"; };
 		DCA0896A95870BC8DEE0F5D7 /* DisclaimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclaimerView.swift; sourceTree = "<group>"; };
 		DEB89069022902CA79C4EB4A /* PersistenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceManager.swift; sourceTree = "<group>"; };
@@ -148,6 +153,9 @@
 		B75ABADF23932DA1545AE412 /* VitaminDTracker */ = {
 			isa = PBXGroup;
 			children = (
+				B7210A18319DE42FAF6493DD /* Assets.xcassets */,
+				137E4EAB8E6443B86CAC6BD9 /* PrivacyInfo.xcprivacy */,
+				C81C682A9561D689F333EF2B /* VitaminDTracker.entitlements */,
 				50250DC20EC4222D8086D628 /* Analytics */,
 				7BEFC2AA0F54A04A3228FB97 /* App */,
 				FBB0AB0876E001363B2CC313 /* Services */,
@@ -218,6 +226,7 @@
 			buildConfigurationList = 093FB3330EA7A3345CA4AE94 /* Build configuration list for PBXNativeTarget "VitaminDTracker" */;
 			buildPhases = (
 				F9621950E7B3B76BAB7CE6B7 /* Sources */,
+				950A5137DD5E46BAE6812775 /* Resources */,
 				B9265CEA8274E14AB4768A50 /* Frameworks */,
 			);
 			buildRules = (
@@ -265,6 +274,18 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		950A5137DD5E46BAE6812775 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0BD2DDCA082864DB402EC13 /* Assets.xcassets in Resources */,
+				B5B2C191588C4A76989D4783 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		F9621950E7B3B76BAB7CE6B7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -301,6 +322,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VitaminDTracker/VitaminDTracker.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -445,6 +467,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VitaminDTracker/VitaminDTracker.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;

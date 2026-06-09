@@ -128,7 +128,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Privacy")
                 } footer: {
-                    Text("All data stays on this device. Nothing is sent to a server. Deleting removes your profile, lab results, supplement history, and sun sessions, then returns to onboarding.")
+                    Text("Your health data stays on this device — it is never uploaded or synced. When live UV is enabled, your selected city's coordinates are sent to Apple Weather to fetch the current UV index. Deleting removes your profile, lab results, supplement history, and sun sessions, then returns to onboarding.")
                         .font(.system(size: 12))
                 }
             }
